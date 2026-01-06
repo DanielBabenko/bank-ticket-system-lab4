@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.example</groupId>
-        <artifactId>bank-ticket-system-lab-3</artifactId>
+        <artifactId>bank-ticket-system-lab-4</artifactId>
         <version>1.0.0</version>
     </parent>
 
