@@ -9,6 +9,7 @@ import com.example.userservice.model.enums.UserRole;
 import com.example.userservice.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import com.example.userservice.event.UserDeletedEvent;
+import reactor.kafka.sender.KafkaSender;
+import reactor.kafka.sender.SenderRecord;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.support.MessageBuilder;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -26,15 +32,17 @@ public class UserService {
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
-    private final ApplicationServiceClient applicationServiceClient;
     private final PasswordEncoder passwordEncoder;
+    private final KafkaSender<String, UserDeletedEvent> kafkaSender;
 
-    public UserService(UserRepository userRepository,
-                       ApplicationServiceClient applicationServiceClient, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, KafkaSender<String, UserDeletedEvent> kafkaSender) {
         this.userRepository = userRepository;
-        this.applicationServiceClient = applicationServiceClient;
         this.passwordEncoder = passwordEncoder;
+        this.kafkaSender = kafkaSender;
     }
+
+    @Value("${spring.kafka.topics.user-deleted:user.deleted}")
+    private String userDeletedTopic;
 
     @Transactional
     public Mono<UserDto> create(UserRequest req) {
@@ -120,13 +128,35 @@ public class UserService {
                 .then(userRepository.findById(userId))
                 .switchIfEmpty(Mono.error(new NotFoundException("User not found: " + userId)))
                 .flatMap(user -> {
-                    log.info("Deleting user {} and their applications", userId);
-                    return Mono.fromCallable(() -> applicationServiceClient.deleteApplicationsByUserId(userId.toString())
-                            ).subscribeOn(Schedulers.boundedElastic())
-                            .doOnError(e -> log.error("Failed to delete applications for user {}: {}", userId, e.getMessage()))
-                            .then(userRepository.delete(user))
-                            .doOnSuccess(v -> log.info("User deleted successfully: {}", userId));
-                });
+                    log.info("Deleting user {}", userId);
+                    return userRepository.delete(user)
+                            .then(Mono.fromCallable(() -> new UserDeletedEvent(userId, Instant.now())))
+                            .flatMap(event -> {
+                                SenderRecord<String, UserDeletedEvent, String> message = SenderRecord
+                                        .create(userDeletedTopic, // Используем переменную из конфига
+                                                null, // partition (null для автоматического выбора по ключу)
+                                                System.currentTimeMillis(),
+                                                userId.toString(), // Ключ = userId
+                                                event,
+                                                null);
+                                return kafkaSender.send(Mono.just(message))
+                                        .doOnNext(result -> {
+                                            if (result.exception() == null) {
+                                                log.info("✅ Event sent to topic '{}'. UserId: {}, Partition: {}, Offset: {}",
+                                                        userDeletedTopic,
+                                                        userId,
+                                                        result.recordMetadata().partition(),
+                                                        result.recordMetadata().offset());
+                                            } else {
+                                                log.error("❌ Failed to send event for userId: {}. Error: {}",
+                                                        userId, result.exception().getMessage());
+                                            }
+                                        })
+                                        .then();
+                            });
+                })
+                .doOnSuccess(v -> log.info("✅ User deletion process completed for userId: {}", userId))
+                .doOnError(e -> log.error("❌ User deletion failed for userId: {}", userId, e));
     }
 
     @Transactional
