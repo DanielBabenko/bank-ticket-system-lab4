@@ -7,6 +7,7 @@ import com.example.userservice.feign.ApplicationServiceClient;
 import com.example.userservice.model.entity.User;
 import com.example.userservice.model.enums.UserRole;
 import com.example.userservice.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,9 +34,9 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final KafkaSender<String, UserDeletedEvent> kafkaSender;
+    private final KafkaSender<String, String> kafkaSender; // Изменено на String
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, KafkaSender<String, UserDeletedEvent> kafkaSender) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, KafkaSender<String, String> kafkaSender, ObjectMapper objectMapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.kafkaSender = kafkaSender;
@@ -129,34 +130,21 @@ public class UserService {
                 .switchIfEmpty(Mono.error(new NotFoundException("User not found: " + userId)))
                 .flatMap(user -> {
                     log.info("Deleting user {}", userId);
-                    return userRepository.delete(user)
-                            .then(Mono.fromCallable(() -> new UserDeletedEvent(userId, Instant.now())))
-                            .flatMap(event -> {
-                                SenderRecord<String, UserDeletedEvent, String> message = SenderRecord
-                                        .create(userDeletedTopic, // Используем переменную из конфига
-                                                null, // partition (null для автоматического выбора по ключу)
-                                                System.currentTimeMillis(),
-                                                userId.toString(), // Ключ = userId
-                                                event,
-                                                null);
-                                return kafkaSender.send(Mono.just(message))
-                                        .doOnNext(result -> {
-                                            if (result.exception() == null) {
-                                                log.info("✅ Event sent to topic '{}'. UserId: {}, Partition: {}, Offset: {}",
-                                                        userDeletedTopic,
-                                                        userId,
-                                                        result.recordMetadata().partition(),
-                                                        result.recordMetadata().offset());
-                                            } else {
-                                                log.error("❌ Failed to send event for userId: {}. Error: {}",
-                                                        userId, result.exception().getMessage());
-                                            }
-                                        })
-                                        .then();
-                            });
-                })
-                .doOnSuccess(v -> log.info("✅ User deletion process completed for userId: {}", userId))
-                .doOnError(e -> log.error("❌ User deletion failed for userId: {}", userId, e));
+
+                    // Просто отправляем UUID как строку
+                    String message = userId.toString();
+
+                    SenderRecord<String, String, String> kafkaMessage = SenderRecord
+                            .create(userDeletedTopic,
+                                    null,
+                                    System.currentTimeMillis(),
+                                    userId.toString(),
+                                    message,
+                                    null);
+
+                    return kafkaSender.send(Mono.just(kafkaMessage))
+                            .then(userRepository.delete(user));
+                });
     }
 
     @Transactional
