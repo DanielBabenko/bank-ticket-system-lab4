@@ -1,4 +1,4 @@
-package com.example.applicationservice.event;
+package com.example.tagservice.event;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

@@ -45,42 +45,25 @@ public class TagEventListener {
         log.info("Received tag event from topic: {}, eventId: {}", topic, eventId);
 
         try {
-            JsonNode jsonNode = objectMapper.readTree(message);
-            String eventType = jsonNode.get("eventType").asText();
-            List<String> tagNames = objectMapper.convertValue(
-                    jsonNode.get("tagNames"),
-                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)
-            );
+            // Десериализуем с использованием нового конструктора
+            TagEvent event = objectMapper.readValue(message, TagEvent.class);
 
-            UUID applicationId = jsonNode.has("applicationId") ?
-                    UUID.fromString(jsonNode.get("applicationId").asText()) : null;
-            UUID actorId = jsonNode.has("actorId") ?
-                    UUID.fromString(jsonNode.get("actorId").asText()) : null;
-
-            log.info("Processing {} for {} tags, applicationId: {}, tags: {}",
-                    eventType, tagNames.size(), applicationId, tagNames);
+            log.info("Processing {} for {} tags, applicationId: {}, actorId: {}, timestamp: {}, tags: {}",
+                    event.getEventType(),
+                    event.getTagNames().size(),
+                    event.getApplicationId(),
+                    event.getActorId(),
+                    event.getTimestamp(),
+                    event.getTagNames());
 
             // Используем готовый метод TagService
-            List<Tag> createdTags = tagService.createOrGetTags(tagNames);
+            List<Tag> createdTags = tagService.createOrGetTags(event.getTagNames());
 
             log.info("Successfully processed {} tags: {}", createdTags.size(),
                     createdTags.stream().map(Tag::getName).toList());
 
-            // Если нужно отправить подтверждение обратно в application-service
-            // можно добавить отправку ответного события
-            if ("TAG_CREATE_REQUEST".equals(eventType) && applicationId != null) {
-                sendTagCreatedConfirmation(applicationId, createdTags);
-            }
-
         } catch (Exception e) {
             log.error("Error processing tag event: {}", e.getMessage(), e);
         }
-    }
-
-    private void sendTagCreatedConfirmation(UUID applicationId, List<Tag> createdTags) {
-        // Можно отправить подтверждение, если это необходимо
-        // Например, если application-service хочет знать, что теги точно созданы
-        log.debug("Tags created for application {}: {}",
-                applicationId, createdTags.stream().map(Tag::getName).toList());
     }
 }

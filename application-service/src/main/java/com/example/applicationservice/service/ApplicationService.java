@@ -313,8 +313,8 @@ public class ApplicationService {
     private Mono<Void> sendTagCreateRequest(UUID applicationId, UUID actorId, List<String> tagNames) {
         return Mono.fromRunnable(() -> {
             try {
+                // Используем упрощенный конструктор
                 TagEvent event = new TagEvent(
-                        UUID.randomUUID(),
                         "TAG_CREATE_REQUEST",
                         applicationId,
                         actorId,
@@ -326,7 +326,7 @@ public class ApplicationService {
                 SenderRecord<String, String, String> record = SenderRecord.create(
                         tagCreateRequestTopic,
                         null,
-                        Instant.now(),
+                        System.currentTimeMillis(),
                         event.getEventId().toString(),
                         message,
                         null
@@ -350,13 +350,14 @@ public class ApplicationService {
         });
     }
 
+
     /**
      * Отправка запроса на прикрепление тегов
      */
     private void sendTagAttachRequest(UUID applicationId, UUID actorId, List<String> tagNames) {
         try {
+            // Используем упрощенный конструктор
             TagEvent event = new TagEvent(
-                    UUID.randomUUID(),
                     "TAG_ATTACH_REQUEST",
                     applicationId,
                     actorId,
@@ -368,7 +369,7 @@ public class ApplicationService {
             SenderRecord<String, String, String> record = SenderRecord.create(
                     tagAttachRequestTopic,
                     null,
-                    Instant.now(),
+                    System.currentTimeMillis(),
                     event.getEventId().toString(),
                     message,
                     null
