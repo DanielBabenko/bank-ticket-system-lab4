@@ -48,7 +48,7 @@ public class ProductDeletedEventListener {
                     .block();
 
         } catch (Exception e) {
-            log.error("❌ Invalid productId format: {}", productIdString, e);
+            log.error("Invalid productId format: {}", productIdString, e);
         }
     }
 }

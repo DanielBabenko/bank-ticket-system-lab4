@@ -3,7 +3,6 @@ package com.example.userservice.service;
 import com.example.userservice.dto.UserDto;
 import com.example.userservice.dto.UserRequest;
 import com.example.userservice.exception.*;
-import com.example.userservice.feign.ApplicationServiceClient;
 import com.example.userservice.model.entity.User;
 import com.example.userservice.model.enums.UserRole;
 import com.example.userservice.repository.UserRepository;
@@ -18,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import com.example.userservice.event.UserDeletedEvent;
 import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderRecord;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -34,7 +32,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final KafkaSender<String, String> kafkaSender; // Изменено на String
+    private final KafkaSender<String, String> kafkaSender;
 
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, KafkaSender<String, String> kafkaSender, ObjectMapper objectMapper) {
         this.userRepository = userRepository;
@@ -131,7 +129,6 @@ public class UserService {
                 .flatMap(user -> {
                     log.info("Deleting user {}", userId);
 
-                    // Просто отправляем UUID как строку
                     String message = userId.toString();
 
                     SenderRecord<String, String, String> kafkaMessage = SenderRecord
