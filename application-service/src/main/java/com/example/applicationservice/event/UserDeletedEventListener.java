@@ -29,7 +29,7 @@ public class UserDeletedEventListener {
             groupId = "${spring.kafka.consumer.group-id}"
     )
     public void handleUserDeleted(
-            @Payload String userIdString,  // Просто строка с UUID
+            @Payload String userIdString,
             Acknowledgment acknowledgment) {
 
         try {
