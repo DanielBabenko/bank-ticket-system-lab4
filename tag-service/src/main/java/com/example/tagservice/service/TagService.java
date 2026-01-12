@@ -73,11 +73,28 @@ public class TagService {
 
         if (!newTags.isEmpty()) {
             List<Tag> savedTags = tagRepository.saveAll(newTags);
-            log.info("Created {} new tags", savedTags.size());
+            log.info("Created {} new tags: {}", savedTags.size(),
+                    savedTags.stream().map(Tag::getName).collect(Collectors.toList()));
             existingTags.addAll(savedTags);
         }
 
         return existingTags;
+    }
+
+    // Метод для совместимости с Feign (возвращает DTO)
+    @Transactional
+    public List<TagDto> createOrGetTagsBatch(List<String> tagNames) {
+        List<Tag> tags = createOrGetTags(tagNames);
+        return tags.stream()
+                .map(tag -> {
+                    TagDto dto = new TagDto();
+                    dto.setId(tag.getId());
+                    dto.setName(tag.getName());
+                    // Примечание: applications будет заполнено только при вызове toDto отдельно
+                    // или можно оставить null, если не требуется для этого сценария
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -99,14 +116,24 @@ public class TagService {
     }
 
     private TagDto toDto(Tag tag) {
-        List<ApplicationInfoDto> applications = applicationServiceClient.getApplicationsByTag(tag.getName());
-        if (applications == null) {
-            throw new ServiceUnavailableException("Application service is unavailable now");
+        try {
+            List<ApplicationInfoDto> applications = applicationServiceClient.getApplicationsByTag(tag.getName());
+            if (applications == null) {
+                throw new ServiceUnavailableException("Application service is unavailable now");
+            }
+            TagDto dto = new TagDto();
+            dto.setId(tag.getId());
+            dto.setName(tag.getName());
+            dto.setApplications(applications);
+            return dto;
+        } catch (Exception e) {
+            log.error("Error fetching applications for tag {}: {}", tag.getName(), e.getMessage());
+            // Возвращаем DTO без applications в случае ошибки
+            TagDto dto = new TagDto();
+            dto.setId(tag.getId());
+            dto.setName(tag.getName());
+            dto.setApplications(Collections.emptyList());
+            return dto;
         }
-        TagDto dto = new TagDto();
-        dto.setId(tag.getId());
-        dto.setName(tag.getName());
-        dto.setApplications(applications);
-        return dto;
     }
 }

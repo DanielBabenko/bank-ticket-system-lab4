@@ -111,6 +111,7 @@ services:
       PRODUCT_DB_URL: jdbc:postgresql://postgres-product:5432/productdb
       PRODUCT_DB_USER: postgres
       PRODUCT_DB_PASS: postgres
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-discovery:8761/eureka
     depends_on:
       postgres-product:
@@ -118,6 +119,8 @@ services:
       config-server:
         condition: service_healthy
       service-discovery:
+        condition: service_healthy
+      kafka1:
         condition: service_healthy
     networks:
       - bank-network
@@ -235,6 +238,7 @@ services:
       TAG_DB_URL: jdbc:postgresql://postgres-tag:5432/tagdb
       TAG_DB_USER: postgres
       TAG_DB_PASS: postgres
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-discovery:8761/eureka
     depends_on:
       postgres-tag:
@@ -242,6 +246,8 @@ services:
       config-server:
         condition: service_healthy
       service-discovery:
+        condition: service_healthy
+      kafka1:
         condition: service_healthy
     networks:
       - bank-network
