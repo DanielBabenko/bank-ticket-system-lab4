@@ -3,7 +3,6 @@ package com.example.productservice.service;
 import com.example.productservice.dto.ProductDto;
 import com.example.productservice.dto.ProductRequest;
 import com.example.productservice.exception.*;
-import com.example.productservice.feign.ApplicationServiceClient;
 import com.example.productservice.feign.AssignmentServiceClient;
 import com.example.productservice.model.entity.Product;
 import com.example.productservice.model.enums.AssignmentRole;
@@ -11,12 +10,16 @@ import com.example.productservice.repository.ProductRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.oauth2.jwt.Jwt;
+import reactor.core.publisher.Mono;
+import reactor.kafka.sender.KafkaSender;
+import reactor.kafka.sender.SenderRecord;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -27,17 +30,17 @@ public class ProductService {
     private static final Logger logger = LoggerFactory.getLogger(ProductService.class);
 
     private final ProductRepository productRepository;
-    private final ApplicationServiceClient applicationServiceClient;
     private final AssignmentServiceClient assignmentServiceClient;
+    private final KafkaSender<String, String> kafkaSender;
+
+    @Value("${spring.kafka.topics.product-deleted:product.deleted}")
+    private String productDeletedTopic;
 
     @Autowired
-    public ProductService(
-            ProductRepository productRepository,
-            ApplicationServiceClient applicationServiceClient,
-            AssignmentServiceClient assignmentServiceClient) {
+    public ProductService(ProductRepository productRepository, AssignmentServiceClient assignmentServiceClient, KafkaSender<String, String> kafkaSender) {
         this.productRepository = productRepository;
-        this.applicationServiceClient = applicationServiceClient;
         this.assignmentServiceClient = assignmentServiceClient;
+        this.kafkaSender = kafkaSender;
     }
 
     @Transactional
@@ -168,17 +171,32 @@ public class ProductService {
             throw new ForbiddenException("Only ADMIN or PRODUCT_OWNER can delete product");
         }
 
-        try {
-            applicationServiceClient.deleteApplicationsByProductId(productId);
-            productRepository.delete(product);
-            logger.info("Product deleted: {}", productId);
-        } catch (ServiceUnavailableException ex) {
-            logger.error("Application service is unavailable now");
-            throw new ServiceUnavailableException("Application service is unavailable now");
-        } catch (Exception ex) {
-            logger.error("Failed to delete product and its applications: {}", ex.getMessage(), ex);
-            throw new ConflictException("Failed to delete product and its applications: " + ex.getMessage());
-        }
+        String message = productId.toString();
+        SenderRecord<String, String, String> kafkaMessage = SenderRecord
+                .create(productDeletedTopic,
+                        null,
+                        System.currentTimeMillis(),
+                        productId.toString(),
+                        message,
+                        null);
+
+        kafkaSender.send(Mono.just(kafkaMessage))
+                .doOnNext(result -> {
+                    if (result.exception() == null) {
+                        logger.info("Product deleted event sent to topic '{}'. ProductId: {}, Partition: {}, Offset: {}",
+                                productDeletedTopic,
+                                productId,
+                                result.recordMetadata().partition(),
+                                result.recordMetadata().offset());
+                    } else {
+                        logger.error("Failed to send product deleted event for productId: {}. Error: {}",
+                                productId, result.exception().getMessage());
+                    }
+                })
+                .then(Mono.fromRunnable(() -> productRepository.delete(product)))
+                .block();
+
+        logger.info("Product deleted: {}", productId);
     }
 
     @Transactional(readOnly = true)

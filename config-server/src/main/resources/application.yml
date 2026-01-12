@@ -8,7 +8,7 @@ spring:
     config:
       server:
         git:
-          uri: https://github.com/KirillKrakov/repo_config.git
+          uri: https://github.com/DanielBabenko/repo_config.git
           default-label: master
           searchPaths:
             - '{application}'

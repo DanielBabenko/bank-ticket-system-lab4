@@ -3,12 +3,13 @@ package com.example.userservice.service;
 import com.example.userservice.dto.UserDto;
 import com.example.userservice.dto.UserRequest;
 import com.example.userservice.exception.*;
-import com.example.userservice.feign.ApplicationServiceClient;
 import com.example.userservice.model.entity.User;
 import com.example.userservice.model.enums.UserRole;
 import com.example.userservice.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.kafka.sender.KafkaSender;
+import reactor.kafka.sender.SenderRecord;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.support.MessageBuilder;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -26,15 +31,17 @@ public class UserService {
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
-    private final ApplicationServiceClient applicationServiceClient;
     private final PasswordEncoder passwordEncoder;
+    private final KafkaSender<String, String> kafkaSender;
 
-    public UserService(UserRepository userRepository,
-                       ApplicationServiceClient applicationServiceClient, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, KafkaSender<String, String> kafkaSender, ObjectMapper objectMapper) {
         this.userRepository = userRepository;
-        this.applicationServiceClient = applicationServiceClient;
         this.passwordEncoder = passwordEncoder;
+        this.kafkaSender = kafkaSender;
     }
+
+    @Value("${spring.kafka.topics.user-deleted:user.deleted}")
+    private String userDeletedTopic;
 
     @Transactional
     public Mono<UserDto> create(UserRequest req) {
@@ -120,12 +127,20 @@ public class UserService {
                 .then(userRepository.findById(userId))
                 .switchIfEmpty(Mono.error(new NotFoundException("User not found: " + userId)))
                 .flatMap(user -> {
-                    log.info("Deleting user {} and their applications", userId);
-                    return Mono.fromCallable(() -> applicationServiceClient.deleteApplicationsByUserId(userId.toString())
-                            ).subscribeOn(Schedulers.boundedElastic())
-                            .doOnError(e -> log.error("Failed to delete applications for user {}: {}", userId, e.getMessage()))
-                            .then(userRepository.delete(user))
-                            .doOnSuccess(v -> log.info("User deleted successfully: {}", userId));
+                    log.info("Deleting user {}", userId);
+
+                    String message = userId.toString();
+
+                    SenderRecord<String, String, String> kafkaMessage = SenderRecord
+                            .create(userDeletedTopic,
+                                    null,
+                                    System.currentTimeMillis(),
+                                    userId.toString(),
+                                    message,
+                                    null);
+
+                    return kafkaSender.send(Mono.just(kafkaMessage))
+                            .then(userRepository.delete(user));
                 });
     }
 
