@@ -3,7 +3,6 @@ package com.example.productservice.service;
 import com.example.productservice.dto.ProductDto;
 import com.example.productservice.dto.ProductRequest;
 import com.example.productservice.exception.*;
-import com.example.productservice.feign.ApplicationServiceClient;
 import com.example.productservice.feign.AssignmentServiceClient;
 import com.example.productservice.model.entity.Product;
 import com.example.productservice.model.enums.AssignmentRole;
