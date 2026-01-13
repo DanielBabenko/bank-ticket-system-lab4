@@ -1,6 +1,7 @@
 package com.example.applicationservice.service;
 
 import com.example.applicationservice.dto.*;
+import com.example.applicationservice.event.TagEvent;
 import com.example.applicationservice.exception.*;
 import com.example.applicationservice.feign.*;
 import com.example.applicationservice.model.entity.*;
@@ -9,8 +10,10 @@ import com.example.applicationservice.model.enums.UserRole;
 import com.example.applicationservice.repository.*;
 import com.example.applicationservice.util.ApplicationPage;
 import com.example.applicationservice.util.CursorUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.FeignException;
 import org.slf4j.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.kafka.sender.KafkaSender;
+import reactor.kafka.sender.SenderRecord;
 
 import java.time.Instant;
 import java.util.*;
@@ -34,29 +39,35 @@ public class ApplicationService {
     private final DocumentRepository documentRepository;
     private final UserServiceClient userServiceClient;
     private final ProductServiceClient productServiceClient;
-    private final TagServiceClient tagServiceClient;
+    private final KafkaSender<String, String> kafkaSender;
+    private final ObjectMapper objectMapper;
 
     public ApplicationService(
             ApplicationRepository applicationRepository,
             ApplicationHistoryRepository applicationHistoryRepository,
             DocumentRepository documentRepository,
             UserServiceClient userServiceClient,
-            ProductServiceClient productServiceClient,
-            TagServiceClient tagServiceClient) {
+            ProductServiceClient productServiceClient, KafkaSender<String, String> kafkaSender, ObjectMapper objectMapper) {
         this.applicationRepository = applicationRepository;
         this.applicationHistoryRepository = applicationHistoryRepository;
         this.documentRepository = documentRepository;
         this.userServiceClient = userServiceClient;
         this.productServiceClient = productServiceClient;
-        this.tagServiceClient = tagServiceClient;
+        this.kafkaSender = kafkaSender;
+        this.objectMapper = objectMapper;
     }
+
+    @Value("${spring.kafka.topics.tag-create-request:tag.create.request}")
+    private String tagCreateRequestTopic;
+
+    @Value("${spring.kafka.topics.tag-attach-request:tag.attach.request}")
+    private String tagAttachRequestTopic;
 
     /**
      * Create application.
      * actorId - id of the authenticated user (from JWT)
      * actorRoleClaim - role string from JWT (may be null)
      */
-    @Transactional
     public Mono<ApplicationDto> createApplication(ApplicationRequest req, UUID actorId, String actorRoleClaim) {
         if (req == null) {
             return Mono.error(new BadRequestException("Request is required"));
@@ -69,13 +80,12 @@ public class ApplicationService {
             return Mono.error(new BadRequestException("Applicant ID and Product ID are required"));
         }
 
-        // Authorization: if actor is not ADMIN, they may only create application for themselves
+        // Authorization
         boolean isAdmin = "ROLE_ADMIN".equals(actorRoleClaim);
         if (!isAdmin && !actorId.equals(applicantId)) {
             return Mono.error(new ForbiddenException("You can create an application only for yourself"));
         }
 
-        // Verify applicant exists (call user-service) - Feign interceptor will forward Authorization header
         return Mono.fromCallable(() -> {
                     try {
                         return userServiceClient.userExists(applicantId);
@@ -151,28 +161,15 @@ public class ApplicationService {
                 .flatMap(app -> {
                     List<String> tagNames = req.getTags() != null ? req.getTags() : List.of();
                     if (!tagNames.isEmpty()) {
-                        return Mono.fromCallable(() -> {
-                                    try {
-                                        List<TagDto> tagDtos = tagServiceClient.createOrGetTagsBatch(tagNames);
-                                        return tagDtos;
-                                    } catch (Exception ex) {
-                                        throw new ServiceUnavailableException("Tag service is unavailable now. Application saved without tags");
-                                    }
-                                }).subscribeOn(Schedulers.boundedElastic())
-                                .flatMap(tagDtos -> {
-                                    if (tagDtos == null) {
-                                        return Mono.error(new ServiceUnavailableException("Tag service is unavailable now. Application saved without tags"));
-                                    }
-                                    return Mono.fromCallable(() -> {
-                                        Set<String> tagNamesSet = tagDtos.stream()
-                                                .map(TagDto::getName)
-                                                .collect(Collectors.toSet());
-                                        app.setTags(tagNamesSet);
-                                        applicationRepository.save(app);
-                                        log.info("Added {} tags to application {}", tagNamesSet.size(), app.getId());
-                                        return app;
-                                    }).subscribeOn(Schedulers.boundedElastic());
-                                });
+                        // Асинхронно отправляем запрос на создание тегов
+                        return sendTagCreateRequest(app.getId(), actorId, tagNames)
+                                .then(Mono.fromCallable(() -> {
+                                    // Сохраняем теги как строки (не ждем ответа от tag-service)
+                                    app.setTags(new HashSet<>(tagNames));
+                                    applicationRepository.save(app);
+                                    log.info("Tags {} queued for creation for application {}", tagNames, app.getId());
+                                    return app;
+                                }).subscribeOn(Schedulers.boundedElastic()));
                     }
                     return Mono.just(app);
                 })
@@ -296,22 +293,106 @@ public class ApplicationService {
                     return Mono.fromCallable(() -> {
                         Application app = applicationRepository.findByIdWithTags(applicationId)
                                 .orElseThrow(() -> new NotFoundException("Application not found"));
-                        try {
-                            List<TagDto> tagDtos = tagServiceClient.createOrGetTagsBatch(tagNames);
-                            Set<String> newTags = tagDtos.stream()
-                                    .map(TagDto::getName)
-                                    .collect(Collectors.toSet());
-                            if (app.getTags() == null) app.setTags(new HashSet<>());
-                            app.getTags().addAll(newTags);
-                            applicationRepository.save(app);
-                            log.info("Added {} tags to existing application {}", newTags.size(), applicationId);
-                            return (Void) null;
-                        } catch (Exception e) {
-                            throw new ServiceUnavailableException("Tag service is unavailable now");
-                        }
+
+                        // Обновляем теги локально
+                        if (app.getTags() == null) app.setTags(new HashSet<>());
+                        app.getTags().addAll(tagNames);
+                        applicationRepository.save(app);
+
+                        log.info("Added {} tags to existing application {} (async)", tagNames.size(), applicationId);
+
+                        // Асинхронно отправляем запрос на создание тегов
+                        sendTagAttachRequest(applicationId, actorId, tagNames);
+
+                        return (Void) null;
                     }).subscribeOn(Schedulers.boundedElastic());
                 });
     }
+
+    /**
+     * Отправка запроса на создание тегов
+     */
+    private Mono<Void> sendTagCreateRequest(UUID applicationId, UUID actorId, List<String> tagNames) {
+        return Mono.fromRunnable(() -> {
+            try {
+                TagEvent event = new TagEvent(
+                        UUID.randomUUID(),
+                        "TAG_CREATE_REQUEST",
+                        applicationId,
+                        actorId,
+                        tagNames
+                );
+
+                String message = objectMapper.writeValueAsString(event);
+
+                SenderRecord<String, String, String> record = SenderRecord.create(
+                        tagCreateRequestTopic,
+                        null,
+                        System.currentTimeMillis(),
+                        event.getEventId().toString(),
+                        message,
+                        null
+                );
+
+                kafkaSender.send(Mono.just(record))
+                        .doOnNext(result -> {
+                            if (result.exception() == null) {
+                                log.info("Tag create request sent for application: {}, tags: {}",
+                                        applicationId, tagNames);
+                            } else {
+                                log.error("Failed to send tag create request: {}",
+                                        result.exception().getMessage());
+                            }
+                        })
+                        .subscribe();
+
+            } catch (Exception e) {
+                log.error("Error sending tag create request: {}", e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Отправка запроса на прикрепление тегов
+     */
+    private void sendTagAttachRequest(UUID applicationId, UUID actorId, List<String> tagNames) {
+        try {
+            TagEvent event = new TagEvent(
+                    UUID.randomUUID(),
+                    "TAG_ATTACH_REQUEST",
+                    applicationId,
+                    actorId,
+                    tagNames
+            );
+
+            String message = objectMapper.writeValueAsString(event);
+
+            SenderRecord<String, String, String> record = SenderRecord.create(
+                    tagAttachRequestTopic,
+                    null,
+                    System.currentTimeMillis(),
+                    event.getEventId().toString(),
+                    message,
+                    null
+            );
+
+            kafkaSender.send(Mono.just(record))
+                    .doOnNext(result -> {
+                        if (result.exception() == null) {
+                            log.info("Tag attach request sent for application: {}, tags: {}",
+                                    applicationId, tagNames);
+                        } else {
+                            log.error("Failed to send tag attach request: {}",
+                                    result.exception().getMessage());
+                        }
+                    })
+                    .subscribe();
+
+        } catch (Exception e) {
+            log.error("Error sending tag attach request: {}", e.getMessage());
+        }
+    }
+
 
     @Transactional
     public Mono<Void> removeTags(UUID applicationId, List<String> tagNames, UUID actorId, String actorRoleClaim) {
