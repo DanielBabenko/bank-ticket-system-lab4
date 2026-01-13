@@ -306,9 +306,6 @@ services:
       timeout: 20s
       retries: 10
       start_period: 30s
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    restart: unless-stopped
 
 networks:
   bank-network:
@@ -320,4 +317,3 @@ volumes:
   pgdata-assignment:
   pgdata-app:
   pgdata-tag:
-  kafka-data:
