@@ -279,7 +279,7 @@ services:
       - bank-network
 
   kafka1:
-    image: apache/kafka:latest
+    image: confluentinc/cp-kafka:latest
     container_name: kafka1
     hostname: kafka1
     ports:
