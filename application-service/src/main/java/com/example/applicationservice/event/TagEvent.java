@@ -1,52 +1,33 @@
 package com.example.applicationservice.event;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.datatype.jsr310.deser.InstantDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.InstantSerializer;
-
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 public class TagEvent {
     private UUID eventId;
-    private String eventType;
-    private UUID applicationId;
+    private String eventType; // "TAG_CREATE_REQUEST" или "TAG_ATTACH_REQUEST"
+    private UUID applicationId; // Для attachTags
     private UUID actorId;
     private List<String> tagNames;
+    private long timestamp;
 
-    @JsonSerialize(using = InstantSerializer.class)
-    @JsonDeserialize(using = InstantDeserializer.class)
-    private Instant timestamp;
+    // Конструкторы, геттеры, сеттеры
+    public TagEvent() {}
 
-    // Конструкторы
-    @JsonCreator
-    public TagEvent(
-            @JsonProperty("eventId") UUID eventId,
-            @JsonProperty("eventType") String eventType,
-            @JsonProperty("applicationId") UUID applicationId,
-            @JsonProperty("actorId") UUID actorId,
-            @JsonProperty("tagNames") List<String> tagNames,
-            @JsonProperty("timestamp") Instant timestamp) {
+    public TagEvent(UUID eventId, String eventType, List<String> tagNames) {
+        this.eventId = eventId;
+        this.eventType = eventType;
+        this.tagNames = tagNames;
+        this.timestamp = System.currentTimeMillis();
+    }
+
+    public TagEvent(UUID eventId, String eventType, UUID applicationId, UUID actorId, List<String> tagNames) {
         this.eventId = eventId;
         this.eventType = eventType;
         this.applicationId = applicationId;
         this.actorId = actorId;
         this.tagNames = tagNames;
-        this.timestamp = timestamp != null ? timestamp : Instant.now();
-    }
-
-    // Упрощенный конструктор для создания новых событий
-    public TagEvent(String eventType, UUID applicationId, UUID actorId, List<String> tagNames) {
-        this.eventId = UUID.randomUUID();
-        this.eventType = eventType;
-        this.applicationId = applicationId;
-        this.actorId = actorId;
-        this.tagNames = tagNames;
-        this.timestamp = Instant.now();
+        this.timestamp = System.currentTimeMillis();
     }
 
     // Геттеры и сеттеры
@@ -65,18 +46,6 @@ public class TagEvent {
     public List<String> getTagNames() { return tagNames; }
     public void setTagNames(List<String> tagNames) { this.tagNames = tagNames; }
 
-    public Instant getTimestamp() { return timestamp; }
-    public void setTimestamp(Instant timestamp) { this.timestamp = timestamp; }
-
-    @Override
-    public String toString() {
-        return "TagEvent{" +
-                "eventId=" + eventId +
-                ", eventType='" + eventType + '\'' +
-                ", applicationId=" + applicationId +
-                ", actorId=" + actorId +
-                ", tagNames=" + tagNames +
-                ", timestamp=" + timestamp +
-                '}';
-    }
+    public long getTimestamp() { return timestamp; }
+    public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
 }

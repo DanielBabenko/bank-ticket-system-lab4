@@ -68,7 +68,6 @@ public class ApplicationService {
      * actorId - id of the authenticated user (from JWT)
      * actorRoleClaim - role string from JWT (may be null)
      */
-    @Transactional
     public Mono<ApplicationDto> createApplication(ApplicationRequest req, UUID actorId, String actorRoleClaim) {
         if (req == null) {
             return Mono.error(new BadRequestException("Request is required"));
@@ -81,6 +80,7 @@ public class ApplicationService {
             return Mono.error(new BadRequestException("Applicant ID and Product ID are required"));
         }
 
+        // Authorization
         boolean isAdmin = "ROLE_ADMIN".equals(actorRoleClaim);
         if (!isAdmin && !actorId.equals(applicantId)) {
             return Mono.error(new ForbiddenException("You can create an application only for yourself"));
@@ -161,8 +161,10 @@ public class ApplicationService {
                 .flatMap(app -> {
                     List<String> tagNames = req.getTags() != null ? req.getTags() : List.of();
                     if (!tagNames.isEmpty()) {
+                        // Асинхронно отправляем запрос на создание тегов
                         return sendTagCreateRequest(app.getId(), actorId, tagNames)
                                 .then(Mono.fromCallable(() -> {
+                                    // Сохраняем теги как строки (не ждем ответа от tag-service)
                                     app.setTags(new HashSet<>(tagNames));
                                     applicationRepository.save(app);
                                     log.info("Tags {} queued for creation for application {}", tagNames, app.getId());
@@ -313,8 +315,8 @@ public class ApplicationService {
     private Mono<Void> sendTagCreateRequest(UUID applicationId, UUID actorId, List<String> tagNames) {
         return Mono.fromRunnable(() -> {
             try {
-                // Используем упрощенный конструктор
                 TagEvent event = new TagEvent(
+                        UUID.randomUUID(),
                         "TAG_CREATE_REQUEST",
                         applicationId,
                         actorId,
@@ -350,14 +352,13 @@ public class ApplicationService {
         });
     }
 
-
     /**
      * Отправка запроса на прикрепление тегов
      */
     private void sendTagAttachRequest(UUID applicationId, UUID actorId, List<String> tagNames) {
         try {
-            // Используем упрощенный конструктор
             TagEvent event = new TagEvent(
+                    UUID.randomUUID(),
                     "TAG_ATTACH_REQUEST",
                     applicationId,
                     actorId,
@@ -391,6 +392,7 @@ public class ApplicationService {
             log.error("Error sending tag attach request: {}", e.getMessage());
         }
     }
+
 
     @Transactional
     public Mono<Void> removeTags(UUID applicationId, List<String> tagNames, UUID actorId, String actorRoleClaim) {
