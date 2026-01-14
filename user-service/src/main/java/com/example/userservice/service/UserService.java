@@ -16,11 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderRecord;
-import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.messaging.support.MessageBuilder;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -140,7 +137,19 @@ public class UserService {
                                     null);
 
                     return kafkaSender.send(Mono.just(kafkaMessage))
-                            .then(userRepository.delete(user));
+                            .next()
+                            .flatMap(result -> {
+                                if (result.exception() != null) {
+                                    return Mono.error(new RuntimeException(
+                                            "Failed to send Kafka message for user " + userId,
+                                            result.exception()
+                                    ));
+                                }
+                                log.debug("Kafka message sent successfully for user {}", userId);
+                                return userRepository.delete(user);
+                            })
+                            .doOnSuccess(unused -> log.info("User {} deleted successfully", userId))
+                            .doOnError(e -> log.error("Failed to process deletion for user {}: {}", userId, e.getMessage()));
                 });
     }
 

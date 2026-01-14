@@ -176,8 +176,13 @@ public class TagIntegrationTest {
     }
 
     @Test
-    void getTagByName_notFound_shouldReturnNotFound() {
+    void getTagByName_TagExisting_shouldReturnOk() {
         // prepare headers (any authenticated user)
+        Tag existingTag = new Tag();
+        existingTag.setId(UUID.randomUUID());
+        existingTag.setName("existent-tag");
+        tagRepository.save(existingTag);
+
         HttpHeaders headers = headersWithToken(UUID.randomUUID(), "ROLE_CLIENT");
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
@@ -187,6 +192,25 @@ public class TagIntegrationTest {
                 HttpMethod.GET,
                 entity,
                 TagDto.class,
+                "existent-tag"
+        );
+
+        // Then
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    @Test
+    void getTagByName_notFound_shouldReturnNotFound() {
+        // prepare headers (any authenticated user)
+        HttpHeaders headers = headersWithToken(UUID.randomUUID(), "ROLE_CLIENT");
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        // When
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/v1/tags/{name}",
+                HttpMethod.GET,
+                entity,
+                String.class,
                 "non-existent-tag"
         );
 

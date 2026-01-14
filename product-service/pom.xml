@@ -108,6 +108,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>kafka</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- jjwt (core + impl + jackson) -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
