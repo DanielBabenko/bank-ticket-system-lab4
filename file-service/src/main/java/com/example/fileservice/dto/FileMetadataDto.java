@@ -3,12 +3,11 @@ package com.example.fileservice.dto;
 import java.time.Instant;
 import java.util.UUID;
 
-public class FileUploadResponse {
+public class FileMetadataDto {
     private UUID id;
     private String fileName;
     private String contentType;
-    private Long fileSize;
-    private UUID uploadedBy;
+    private Long size;
     private Instant uploadedAt;
     private String downloadUrl;
 
@@ -36,20 +35,12 @@ public class FileUploadResponse {
         this.contentType = contentType;
     }
 
-    public Long getFileSize() {
-        return fileSize;
+    public Long getSize() {
+        return size;
     }
 
-    public void setFileSize(Long fileSize) {
-        this.fileSize = fileSize;
-    }
-
-    public UUID getUploadedBy() {
-        return uploadedBy;
-    }
-
-    public void setUploadedBy(UUID uploadedBy) {
-        this.uploadedBy = uploadedBy;
+    public void setSize(Long size) {
+        this.size = size;
     }
 
     public Instant getUploadedAt() {
@@ -68,5 +59,3 @@ public class FileUploadResponse {
         this.downloadUrl = downloadUrl;
     }
 }
-
-

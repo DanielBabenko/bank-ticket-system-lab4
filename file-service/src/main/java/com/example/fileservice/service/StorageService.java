@@ -1,12 +1,14 @@
 package com.example.fileservice.service;
 
+import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.InputStream;
+import java.nio.file.Path;
+import java.util.UUID;
 
 public interface StorageService {
-    String storeFile(MultipartFile file, String fileName);
-    InputStream getFile(String storageKey);
-    void deleteFile(String storageKey);
-    String getFileUrl(String storageKey);
+    String store(MultipartFile file, UUID fileId);
+    Resource loadAsResource(String filename);
+    void delete(String filename);
+    Path getStorageLocation();
 }

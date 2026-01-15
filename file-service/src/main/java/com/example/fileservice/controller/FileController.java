@@ -1,27 +1,24 @@
 package com.example.fileservice.controller;
 
-import com.example.fileservice.dto.AttachFilesRequest;
-import com.example.fileservice.dto.FileMetadataResponse;
-import com.example.fileservice.dto.FileUploadResponse;
-import com.example.fileservice.exception.UnauthorizedException;
+import com.example.fileservice.dto.AttachFileRequest;
+import com.example.fileservice.dto.FileMetadataDto;
 import com.example.fileservice.service.FileService;
-import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/files")
 public class FileController {
+    private static final Logger log = LoggerFactory.getLogger(FileController.class);
 
     private final FileService fileService;
 
@@ -30,100 +27,63 @@ public class FileController {
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<FileUploadResponse> uploadFile(
+    public ResponseEntity<FileMetadataDto> uploadFile(
             @RequestParam("file") MultipartFile file,
-            @AuthenticationPrincipal Jwt jwt) {
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestParam(value = "applicationId", required = false) UUID applicationId) {
 
-        UUID userId = extractUserId(jwt);
-        FileUploadResponse response = fileService.uploadFile(file, userId);
+        FileMetadataDto metadata = fileService.uploadFile(file, userId, applicationId);
+        return ResponseEntity.ok(metadata);
+    }
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    @GetMapping("/{fileId}")
+    public ResponseEntity<Resource> downloadFile(
+            @PathVariable UUID fileId,
+            @RequestHeader("X-User-Id") UUID userId) {
+
+        Resource resource = fileService.loadFileAsResource(fileId, userId);
+        FileMetadataDto metadata = fileService.getFileMetadata(fileId, userId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(metadata.getContentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + metadata.getFileName() + "\"")
+                .body(resource);
     }
 
     @GetMapping("/{fileId}/metadata")
-    public ResponseEntity<FileMetadataResponse> getFileMetadata(@PathVariable UUID fileId) {
-        FileMetadataResponse response = fileService.getFileMetadata(fileId);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<FileMetadataDto> getFileMetadata(
+            @PathVariable UUID fileId,
+            @RequestHeader("X-User-Id") UUID userId) {
+
+        FileMetadataDto metadata = fileService.getFileMetadata(fileId, userId);
+        return ResponseEntity.ok(metadata);
     }
 
-    @GetMapping("/{fileId}/download")
-    public ResponseEntity<byte[]> downloadFile(@PathVariable UUID fileId) {
-        byte[] fileContent = fileService.downloadFile(fileId);
-        FileMetadataResponse metadata = fileService.getFileMetadata(fileId);
+    @PostMapping("/{fileId}/attach")
+    public ResponseEntity<Void> attachToApplication(
+            @PathVariable UUID fileId,
+            @RequestBody AttachFileRequest request,
+            @RequestHeader("X-User-Id") UUID userId) {
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(metadata.getContentType()));
-        headers.setContentDispositionFormData("attachment", metadata.getFileName());
-        headers.setContentLength(fileContent.length);
-
-        return new ResponseEntity<>(fileContent, headers, HttpStatus.OK);
-    }
-
-    @PostMapping("/attach-to-application")
-    public ResponseEntity<Void> attachFilesToApplication(
-            @Valid @RequestBody AttachFilesRequest request,
-            @AuthenticationPrincipal Jwt jwt) {
-
-        UUID userId = extractUserId(jwt);
-        // TODO: Проверить права доступа пользователя к заявке
-        // Для этого может потребоваться интеграция с application-service
-
-        fileService.attachFilesToApplication(request.getApplicationId(), request.getFileIds());
+        fileService.attachToApplication(fileId, request.getApplicationId(), userId);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/application/{applicationId}")
-    public ResponseEntity<List<FileMetadataResponse>> getApplicationFiles(
-            @PathVariable UUID applicationId,
-            @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<List<FileMetadataDto>> getFilesByApplication(
+            @PathVariable UUID applicationId) {
 
-        UUID userId = extractUserId(jwt);
-        // TODO: Проверить права доступа пользователя к заявке
-
-        List<FileMetadataResponse> files = fileService.getFilesByApplication(applicationId);
+        List<FileMetadataDto> files = fileService.getFilesByApplication(applicationId);
         return ResponseEntity.ok(files);
     }
 
     @DeleteMapping("/{fileId}")
     public ResponseEntity<Void> deleteFile(
             @PathVariable UUID fileId,
-            @AuthenticationPrincipal Jwt jwt) {
+            @RequestHeader("X-User-Id") UUID userId) {
 
-        UUID userId = extractUserId(jwt);
-        boolean isAdmin = isAdmin(jwt);
-
-        fileService.deleteFile(fileId, userId, isAdmin);
+        fileService.deleteFile(fileId, userId);
         return ResponseEntity.noContent().build();
-    }
-
-    private UUID extractUserId(Jwt jwt) {
-        String userIdClaim = jwt.getClaimAsString("sub");
-        if (userIdClaim == null) {
-            userIdClaim = jwt.getClaimAsString("userId");
-        }
-        try {
-            return UUID.fromString(userIdClaim);
-        } catch (IllegalArgumentException e) {
-            throw new UnauthorizedException("Invalid user ID in token");
-        }
-    }
-
-    private boolean isAdmin(Jwt jwt) {
-        // Проверяем роли из JWT токена
-        List<String> roles = jwt.getClaimAsStringList("roles");
-        if (roles != null) {
-            return roles.contains("ROLE_ADMIN");
-        }
-
-        // Альтернативный вариант: проверка по realm_access
-        Map<String, Object> realmAccess = jwt.getClaim("realm_access");
-        if (realmAccess != null) {
-            List<String> realmRoles = (List<String>) realmAccess.get("roles");
-            if (realmRoles != null) {
-                return realmRoles.contains("admin") || realmRoles.contains("ROLE_ADMIN");
-            }
-        }
-
-        return false;
     }
 }

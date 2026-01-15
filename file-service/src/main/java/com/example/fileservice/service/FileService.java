@@ -1,20 +1,17 @@
 package com.example.fileservice.service;
 
-import com.example.fileservice.dto.FileMetadataResponse;
-import com.example.fileservice.dto.FileUploadResponse;
+import com.example.fileservice.dto.FileMetadataDto;
 import com.example.fileservice.exception.FileNotFoundException;
-import com.example.fileservice.exception.FileStorageException;
 import com.example.fileservice.exception.UnauthorizedException;
-import com.example.fileservice.model.entity.FileMetadata;
-import com.example.fileservice.model.enums.FileStorageType;
-import com.example.fileservice.repository.FileMetadataRepository;
+import com.example.fileservice.model.entity.FileEntity;
+import com.example.fileservice.repository.FileRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -23,148 +20,127 @@ import java.util.stream.Collectors;
 public class FileService {
     private static final Logger log = LoggerFactory.getLogger(FileService.class);
 
-    private final FileMetadataRepository fileMetadataRepository;
+    private final FileRepository fileRepository;
     private final StorageService storageService;
 
-    public FileService(FileMetadataRepository fileMetadataRepository, StorageService storageService) {
-        this.fileMetadataRepository = fileMetadataRepository;
+    public FileService(FileRepository fileRepository, StorageService storageService) {
+        this.fileRepository = fileRepository;
         this.storageService = storageService;
     }
 
     @Transactional
-    public FileUploadResponse uploadFile(MultipartFile file, UUID uploadedBy) {
-        try {
-            // Валидация файла
-            validateFile(file);
+    public FileMetadataDto uploadFile(MultipartFile file, UUID userId, UUID applicationId) {
+        UUID fileId = UUID.randomUUID();
 
-            // Сохраняем файл в хранилище
-            String storageKey = storageService.storeFile(file, file.getOriginalFilename());
+        // Сохраняем файл в хранилище
+        String storagePath = storageService.store(file, fileId);
 
-            // Сохраняем метаданные в БД
-            FileMetadata metadata = new FileMetadata();
-            metadata.setId(UUID.randomUUID());
-            metadata.setFileName(file.getOriginalFilename());
-            metadata.setContentType(file.getContentType());
-            metadata.setFileSize(file.getSize());
-            metadata.setStorageKey(storageKey);
-            metadata.setStorageType(FileStorageType.LOCAL);
-            metadata.setUploadedBy(uploadedBy);
-            metadata.setUploadedAt(Instant.now());
+        // Сохраняем метаданные в БД
+        FileEntity fileEntity = new FileEntity();
+        fileEntity.setId(fileId);
+        fileEntity.setFileName(file.getOriginalFilename());
+        fileEntity.setContentType(file.getContentType());
+        fileEntity.setSize(file.getSize());
+        fileEntity.setStoragePath(storagePath);
+        fileEntity.setUploadedBy(userId);
 
-            fileMetadataRepository.save(metadata);
-
-            log.info("File uploaded successfully: {}, uploadedBy: {}", metadata.getId(), uploadedBy);
-
-            FileUploadResponse response = new FileUploadResponse();
-            response.setId(metadata.getId());
-            response.setFileName(metadata.getFileName());
-            response.setContentType(metadata.getContentType());
-            response.setFileSize(metadata.getFileSize());
-            response.setUploadedBy(metadata.getUploadedBy());
-            response.setUploadedAt(metadata.getUploadedAt());
-            response.setDownloadUrl(storageService.getFileUrl(storageKey));
-            return response;
-
-        } catch (Exception e) {
-            log.error("Failed to upload file: {}", e.getMessage(), e);
-            throw new FileStorageException("Failed to upload file: " + e.getMessage(), e);
+        if (applicationId != null) {
+            fileEntity.getApplicationIds().add(applicationId);
         }
+
+        fileRepository.save(fileEntity);
+
+        log.info("File uploaded: {} by user {}", fileId, userId);
+        return toDto(fileEntity);
     }
 
     @Transactional(readOnly = true)
-    public FileMetadataResponse getFileMetadata(UUID fileId) {
-        FileMetadata metadata = fileMetadataRepository.findById(fileId)
+    public FileMetadataDto getFileMetadata(UUID fileId, UUID userId) {
+        FileEntity fileEntity = fileRepository.findById(fileId)
                 .orElseThrow(() -> new FileNotFoundException("File not found: " + fileId));
 
-        return toResponse(metadata);
-    }
-
-    @Transactional(readOnly = true)
-    public byte[] downloadFile(UUID fileId) {
-        FileMetadata metadata = fileMetadataRepository.findById(fileId)
-                .orElseThrow(() -> new FileNotFoundException("File not found: " + fileId));
-
-        try (var inputStream = storageService.getFile(metadata.getStorageKey())) {
-            return inputStream.readAllBytes();
-        } catch (Exception e) {
-            throw new FileStorageException("Failed to download file: " + fileId, e);
+        // Проверяем права доступа
+        if (!fileEntity.getUploadedBy().equals(userId) &&
+                fileEntity.getApplicationIds().isEmpty()) {
+            throw new UnauthorizedException("No access to file");
         }
+
+        return toDto(fileEntity);
     }
 
     @Transactional
-    public void attachFilesToApplication(UUID applicationId, List<UUID> fileIds) {
-        if (fileIds == null || fileIds.isEmpty()) {
-            return;
+    public void attachToApplication(UUID fileId, UUID applicationId, UUID userId) {
+        FileEntity fileEntity = fileRepository.findById(fileId)
+                .orElseThrow(() -> new FileNotFoundException("File not found: " + fileId));
+
+        // Проверяем, что пользователь - владелец файла
+        if (!fileEntity.getUploadedBy().equals(userId)) {
+            throw new UnauthorizedException("Only file owner can attach it to applications");
         }
 
-        fileMetadataRepository.attachFilesToApplication(fileIds, applicationId);
-        log.info("Attached {} files to application: {}", fileIds.size(), applicationId);
+        fileEntity.getApplicationIds().add(applicationId);
+        fileRepository.save(fileEntity);
+
+        log.info("File {} attached to application {}", fileId, applicationId);
     }
 
     @Transactional(readOnly = true)
-    public List<FileMetadataResponse> getFilesByApplication(UUID applicationId) {
-        List<FileMetadata> files = fileMetadataRepository.findByApplicationIdAndDeletedAtIsNull(applicationId);
+    public List<FileMetadataDto> getFilesByApplication(UUID applicationId) {
+        List<FileEntity> files = fileRepository.findByApplicationId(applicationId);
 
         return files.stream()
-                .map(this::toResponse)
+                .map(this::toDto)
                 .collect(Collectors.toList());
     }
 
-    @Transactional
-    public void deleteFile(UUID fileId, UUID userId, boolean isAdmin) {
-        FileMetadata metadata = fileMetadataRepository.findById(fileId)
+    @Transactional(readOnly = true)
+    public Resource loadFileAsResource(UUID fileId, UUID userId) {
+        FileEntity fileEntity = fileRepository.findById(fileId)
                 .orElseThrow(() -> new FileNotFoundException("File not found: " + fileId));
 
-        // Проверка прав доступа
-        if (!isAdmin && !metadata.getUploadedBy().equals(userId)) {
-            throw new UnauthorizedException("You don't have permission to delete this file");
+        // Проверяем права доступа
+        if (!fileEntity.getUploadedBy().equals(userId) &&
+                fileEntity.getApplicationIds().isEmpty()) {
+            throw new UnauthorizedException("No access to file");
         }
 
-        if (metadata.getDeletedAt() != null) {
-            throw new FileNotFoundException("File already deleted: " + fileId);
-        }
+        // Извлекаем имя файла из пути
+        String filename = fileEntity.getStoragePath()
+                .substring(fileEntity.getStoragePath().lastIndexOf("/") + 1);
 
-        // Мягкое удаление
-        metadata.setDeletedAt(Instant.now());
-        fileMetadataRepository.save(metadata);
-
-        // Физическое удаление файла (можно сделать асинхронно)
-        try {
-            storageService.deleteFile(metadata.getStorageKey());
-        } catch (Exception e) {
-            log.warn("Failed to delete physical file: {}", metadata.getStorageKey(), e);
-            // Не выбрасываем исключение, т.к. метаданные уже обновлены
-        }
-
-        log.info("File deleted: {}", fileId);
+        return storageService.loadAsResource(filename);
     }
 
-    private void validateFile(MultipartFile file) {
-        if (file.isEmpty()) {
-            throw new FileStorageException("File is empty");
+    @Transactional
+    public void deleteFile(UUID fileId, UUID userId) {
+        FileEntity fileEntity = fileRepository.findById(fileId)
+                .orElseThrow(() -> new FileNotFoundException("File not found: " + fileId));
+
+        // Проверяем права
+        if (!fileEntity.getUploadedBy().equals(userId)) {
+            throw new UnauthorizedException("Only file owner can delete it");
         }
 
-        if (file.getSize() > 10 * 1024 * 1024) { // 10MB limit
-            throw new FileStorageException("File size exceeds limit (10MB)");
-        }
+        // Удаляем файл из хранилища
+        String filename = fileEntity.getStoragePath()
+                .substring(fileEntity.getStoragePath().lastIndexOf("/") + 1);
+        storageService.delete(filename);
 
-        // Проверка MIME типов
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/") && !contentType.equals("application/pdf")) {
-            throw new FileStorageException("Unsupported file type. Only images and PDF are allowed");
-        }
+        // Удаляем метаданные
+        fileRepository.delete(fileEntity);
+
+        log.info("File deleted: {} by user {}", fileId, userId);
     }
 
-    private FileMetadataResponse toResponse(FileMetadata metadata) {
-        FileMetadataResponse response = new FileMetadataResponse();
-        response.setId(metadata.getId());
-        response.setFileName(metadata.getFileName());
-        response.setContentType(metadata.getContentType());
-        response.setFileSize(metadata.getFileSize());
-        response.setUploadedBy(metadata.getUploadedBy());
-        response.setUploadedAt(metadata.getUploadedAt());
-        response.setApplicationId(metadata.getApplicationId());
-        response.setDownloadUrl(storageService.getFileUrl(metadata.getStorageKey()));
-        return response;
+    private FileMetadataDto toDto(FileEntity fileEntity) {
+        FileMetadataDto metadata = new FileMetadataDto();
+        metadata.setId(fileEntity.getId());
+        metadata.setFileName(fileEntity.getFileName());
+        metadata.setContentType(fileEntity.getContentType());
+        metadata.setSize(fileEntity.getSize());
+        metadata.setUploadedAt(fileEntity.getUploadedAt());
+        metadata.setDownloadUrl("/api/v1/files/" + fileEntity.getId());
+
+        return metadata;
     }
 }

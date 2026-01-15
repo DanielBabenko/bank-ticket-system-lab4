@@ -1,11 +1,10 @@
 package com.example.fileservice.dto;
 
-import java.util.List;
 import java.util.UUID;
 
-public class AttachFilesRequest {
+public class AttachFileRequest {
     private UUID applicationId;
-    private java.util.List<UUID> fileIds;
+    private UUID userId;
 
     public UUID getApplicationId() {
         return applicationId;
@@ -13,13 +12,5 @@ public class AttachFilesRequest {
 
     public void setApplicationId(UUID applicationId) {
         this.applicationId = applicationId;
-    }
-
-    public List<UUID> getFileIds() {
-        return fileIds;
-    }
-
-    public void setFileIds(List<UUID> fileIds) {
-        this.fileIds = fileIds;
     }
 }
