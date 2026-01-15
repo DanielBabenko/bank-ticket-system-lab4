@@ -268,6 +268,57 @@ services:
     networks:
       - bank-network
 
+  postgres-file:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: filedb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5438:5432"
+    volumes:
+      - pgdata-file:/var/lib/postgresql/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  file-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE_PATH: file-service
+        JAR_NAME: file-service-1.0.0.jar
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      FILE_DB_URL: jdbc:postgresql://postgres-file:5432/filedb
+      FILE_DB_USER: postgres
+      FILE_DB_PASS: postgres
+      FILE_STORAGE_LOCATION: /storage/files
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-discovery:8761/eureka
+    depends_on:
+      postgres-tag:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      service-discovery:
+        condition: service_healthy
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+    volumes:
+      - file-storage:/storage/files
+    networks:
+      - bank-network
+
   gateway:
     build:
       context: .
@@ -391,3 +442,5 @@ volumes:
   pgdata-assignment:
   pgdata-app:
   pgdata-tag:
+  pgdata-file:
+  file-storage:

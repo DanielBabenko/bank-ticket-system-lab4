@@ -1,6 +1,7 @@
 package com.example.applicationservice.service;
 
 import com.example.applicationservice.dto.*;
+import com.example.applicationservice.event.FileEvent;
 import com.example.applicationservice.event.TagEvent;
 import com.example.applicationservice.exception.*;
 import com.example.applicationservice.feign.*;
@@ -39,6 +40,7 @@ public class ApplicationService {
     private final DocumentRepository documentRepository;
     private final UserServiceClient userServiceClient;
     private final ProductServiceClient productServiceClient;
+    private final FileServiceClient fileServiceClient;
     private final KafkaSender<String, String> kafkaSender;
     private final ObjectMapper objectMapper;
 
@@ -47,12 +49,13 @@ public class ApplicationService {
             ApplicationHistoryRepository applicationHistoryRepository,
             DocumentRepository documentRepository,
             UserServiceClient userServiceClient,
-            ProductServiceClient productServiceClient, KafkaSender<String, String> kafkaSender, ObjectMapper objectMapper) {
+            ProductServiceClient productServiceClient, FileServiceClient fileServiceClient, KafkaSender<String, String> kafkaSender, ObjectMapper objectMapper) {
         this.applicationRepository = applicationRepository;
         this.applicationHistoryRepository = applicationHistoryRepository;
         this.documentRepository = documentRepository;
         this.userServiceClient = userServiceClient;
         this.productServiceClient = productServiceClient;
+        this.fileServiceClient = fileServiceClient;
         this.kafkaSender = kafkaSender;
         this.objectMapper = objectMapper;
     }
@@ -63,11 +66,18 @@ public class ApplicationService {
     @Value("${spring.kafka.topics.tag-attach-request:tag.attach.request}")
     private String tagAttachRequestTopic;
 
+    @Value("${spring.kafka.topics.file-attach-request:file.attach.request}")
+    private String fileAttachRequestTopic;
+
+    @Value("${spring.kafka.topics.file-detach-request:file.detach.request}")
+    private String fileDetachRequestTopic;
+
     /**
      * Create application.
      * actorId - id of the authenticated user (from JWT)
      * actorRoleClaim - role string from JWT (may be null)
      */
+    @Transactional
     public Mono<ApplicationDto> createApplication(ApplicationRequest req, UUID actorId, String actorRoleClaim) {
         if (req == null) {
             return Mono.error(new BadRequestException("Request is required"));
@@ -86,6 +96,7 @@ public class ApplicationService {
             return Mono.error(new ForbiddenException("You can create an application only for yourself"));
         }
 
+        // Проверка существования пользователя
         return Mono.fromCallable(() -> {
                     try {
                         return userServiceClient.userExists(applicantId);
@@ -102,6 +113,8 @@ public class ApplicationService {
                     if (!userExists) {
                         return Mono.error(new NotFoundException("Applicant with this ID not found"));
                     }
+
+                    // Проверка существования продукта
                     return Mono.fromCallable(() -> {
                         try {
                             return productServiceClient.productExists(productId);
@@ -120,6 +133,7 @@ public class ApplicationService {
                         return Mono.error(new NotFoundException("Product with this ID not found"));
                     }
 
+                    // Создание заявки в БД
                     return Mono.fromCallable(() -> {
                         Application app = new Application();
                         app.setId(UUID.randomUUID());
@@ -128,23 +142,9 @@ public class ApplicationService {
                         app.setStatus(ApplicationStatus.SUBMITTED);
                         app.setCreatedAt(Instant.now());
 
-                        if (req.getDocuments() != null) {
-                            List<Document> docs = req.getDocuments().stream()
-                                    .map(dreq -> {
-                                        Document d = new Document();
-                                        d.setId(UUID.randomUUID());
-                                        d.setFileName(dreq.getFileName());
-                                        d.setContentType(dreq.getContentType());
-                                        d.setStoragePath(dreq.getStoragePath());
-                                        d.setApplication(app);
-                                        return d;
-                                    })
-                                    .collect(Collectors.toList());
-                            app.setDocuments(docs);
-                        }
-
                         applicationRepository.save(app);
 
+                        // Создание записи в истории
                         ApplicationHistory hist = new ApplicationHistory();
                         hist.setId(UUID.randomUUID());
                         hist.setApplication(app);
@@ -159,12 +159,21 @@ public class ApplicationService {
                     }).subscribeOn(Schedulers.boundedElastic());
                 })
                 .flatMap(app -> {
+                    // Асинхронная отправка файлов через Kafka
+                    List<UUID> fileIds = req.getFileIds() != null ? req.getFileIds() : List.of();
+                    if (!fileIds.isEmpty()) {
+                        return sendFileAttachRequest(app.getId(), actorId, fileIds)
+                                .then(Mono.just(app));
+                    }
+                    return Mono.just(app);
+                })
+                .flatMap(app -> {
+                    // Асинхронная отправка тегов через Kafka
                     List<String> tagNames = req.getTags() != null ? req.getTags() : List.of();
                     if (!tagNames.isEmpty()) {
-                        // Асинхронно отправляем запрос на создание тегов
                         return sendTagCreateRequest(app.getId(), actorId, tagNames)
                                 .then(Mono.fromCallable(() -> {
-                                    // Сохраняем теги как строки (не ждем ответа от tag-service)
+                                    // Сохраняем теги как строки локально (не ждем ответа от tag-service)
                                     app.setTags(new HashSet<>(tagNames));
                                     applicationRepository.save(app);
                                     log.info("Tags {} queued for creation for application {}", tagNames, app.getId());
@@ -280,6 +289,110 @@ public class ApplicationService {
             }
             return new ApplicationPage(dtos, nextCursor);
         }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    //attach files
+    @Transactional
+    public Mono<Void> attachFiles(UUID applicationId, List<UUID> fileIds, UUID actorId, String actorRoleClaim) {
+        return validateActor(applicationId, actorId, actorRoleClaim)
+                .flatMap(valid -> {
+                    if (!valid) {
+                        return Mono.error(new ForbiddenException("Insufficient permissions"));
+                    }
+
+                    return sendFileAttachRequest(applicationId, actorId, fileIds);
+                });
+    }
+
+    @Transactional
+    public Mono<Void> detachFiles(UUID applicationId, List<UUID> fileIds, UUID actorId, String actorRoleClaim) {
+        return validateActor(applicationId, actorId, actorRoleClaim)
+                .flatMap(valid -> {
+                    if (!valid) {
+                        return Mono.error(new ForbiddenException("Insufficient permissions"));
+                    }
+
+                    return Mono.fromRunnable(() -> {
+                        sendFileDetachRequest(applicationId, actorId, fileIds);
+                    }).subscribeOn(Schedulers.boundedElastic());
+                }).then();
+    }
+
+
+    private Mono<Void> sendFileAttachRequest(UUID applicationId, UUID userId, List<UUID> fileIds) {
+        return Mono.fromRunnable(() -> {
+            try {
+                FileEvent event = new FileEvent(
+                        "FILE_ATTACH_REQUEST",
+                        applicationId,
+                        userId,
+                        fileIds
+                );
+
+                String message = objectMapper.writeValueAsString(event);
+
+                SenderRecord<String, String, String> record = SenderRecord.create(
+                        fileAttachRequestTopic,
+                        null,
+                        System.currentTimeMillis(),
+                        event.getEventId().toString(),
+                        message,
+                        null
+                );
+
+                kafkaSender.send(Mono.just(record))
+                        .doOnNext(result -> {
+                            if (result.exception() == null) {
+                                log.info("File attach request sent for application: {}, files: {}",
+                                        applicationId, fileIds);
+                            } else {
+                                log.error("Failed to send file attach request: {}",
+                                        result.exception().getMessage());
+                            }
+                        })
+                        .subscribe();
+
+            } catch (Exception e) {
+                log.error("Error sending file attach request: {}", e.getMessage());
+            }
+        });
+    }
+
+    private void sendFileDetachRequest(UUID applicationId, UUID userId, List<UUID> fileIds) {
+        try {
+            FileEvent event = new FileEvent(
+                    "FILE_DETACH_REQUEST",
+                    applicationId,
+                    userId,
+                    fileIds
+            );
+
+            String message = objectMapper.writeValueAsString(event);
+
+            SenderRecord<String, String, String> record = SenderRecord.create(
+                    fileDetachRequestTopic,
+                    null,
+                    System.currentTimeMillis(),
+                    event.getEventId().toString(),
+                    message,
+                    null
+            );
+
+            kafkaSender.send(Mono.just(record))
+                    .doOnNext(result -> {
+                        if (result.exception() == null) {
+                            log.info("File detach request sent for application: {}, files: {}",
+                                    applicationId, fileIds);
+                        } else {
+                            log.error("Failed to send file detach request: {}",
+                                    result.exception().getMessage());
+                        }
+                    })
+                    .subscribe();
+
+        } catch (Exception e) {
+            log.error("Error sending file detach request: {}", e.getMessage());
+        }
     }
 
     // attachTags now receives actorId and actorRoleClaim
@@ -567,18 +680,13 @@ public class ApplicationService {
         dto.setStatus(app.getStatus());
         dto.setCreatedAt(app.getCreatedAt());
 
-        if (app.getDocuments() != null) {
-            List<DocumentDto> docDtos = app.getDocuments().stream()
-                    .map(doc -> {
-                        DocumentDto docDto = new DocumentDto();
-                        docDto.setId(doc.getId());
-                        docDto.setFileName(doc.getFileName());
-                        docDto.setContentType(doc.getContentType());
-                        docDto.setStoragePath(doc.getStoragePath());
-                        return docDto;
-                    })
-                    .collect(Collectors.toList());
-            dto.setDocuments(docDtos);
+        // Получаем файлы из file-service
+        try {
+            List<FileMetadataDto> files = fileServiceClient.getFilesByApplication(app.getId());
+            dto.setFiles(files);
+        } catch (Exception e) {
+            log.warn("Cannot fetch files for application {}: {}", app.getId(), e.getMessage());
+            dto.setFiles(Collections.emptyList());
         }
 
         if (app.getTags() != null) {

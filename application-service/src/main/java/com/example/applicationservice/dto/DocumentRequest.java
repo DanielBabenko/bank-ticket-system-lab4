@@ -6,7 +6,7 @@ public class DocumentRequest {
     @NotBlank
     private String fileName;
     private String contentType;
-    private String fileId;
+    private String storagePath;
 
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
@@ -14,6 +14,6 @@ public class DocumentRequest {
     public String getContentType() { return contentType; }
     public void setContentType(String contentType) { this.contentType = contentType; }
 
-    public String getFileId() { return fileId; }
-    public void setFileId(String fileId) { this.fileId = fileId; }
+    public String getStoragePath() { return storagePath; }
+    public void setStoragePath(String storagePath) { this.storagePath = storagePath; }
 }

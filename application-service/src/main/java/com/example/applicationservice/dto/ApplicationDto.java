@@ -3,6 +3,7 @@ package com.example.applicationservice.dto;
 import com.example.applicationservice.model.enums.ApplicationStatus;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,7 +13,8 @@ public class ApplicationDto {
     private UUID productId;
     private ApplicationStatus status;
     private Instant createdAt;
-    private List<DocumentDto> documents;
+    private List<FileMetadataDto> files;
+    //private List<DocumentDto> documents;
     private List<String> tags;
 
     public UUID getId() { return id; }
@@ -30,8 +32,11 @@ public class ApplicationDto {
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
-    public List<DocumentDto> getDocuments() { return documents; }
-    public void setDocuments(List<DocumentDto> documents) { this.documents = documents; }
+//    public List<DocumentDto> getDocuments() { return documents; }
+//    public void setDocuments(List<DocumentDto> documents) { this.documents = documents; }
+
+    public List<FileMetadataDto> getFiles() { return files; }
+    public void setFiles(List<FileMetadataDto> files) { this.files = files; }
 
     public List<String> getTags() { return tags; }
     public void setTags(List<String> tags) { this.tags = tags; }
