@@ -4,6 +4,7 @@ import com.example.fileservice.dto.FileMetadataResponse;
 import com.example.fileservice.dto.FileUploadResponse;
 import com.example.fileservice.exception.FileNotFoundException;
 import com.example.fileservice.exception.FileStorageException;
+import com.example.fileservice.exception.UnauthorizedException;
 import com.example.fileservice.model.entity.FileMetadata;
 import com.example.fileservice.model.enums.FileStorageType;
 import com.example.fileservice.repository.FileMetadataRepository;
@@ -110,9 +111,18 @@ public class FileService {
     }
 
     @Transactional
-    public void deleteFile(UUID fileId) {
+    public void deleteFile(UUID fileId, UUID userId, boolean isAdmin) {
         FileMetadata metadata = fileMetadataRepository.findById(fileId)
                 .orElseThrow(() -> new FileNotFoundException("File not found: " + fileId));
+
+        // Проверка прав доступа
+        if (!isAdmin && !metadata.getUploadedBy().equals(userId)) {
+            throw new UnauthorizedException("You don't have permission to delete this file");
+        }
+
+        if (metadata.getDeletedAt() != null) {
+            throw new FileNotFoundException("File already deleted: " + fileId);
+        }
 
         // Мягкое удаление
         metadata.setDeletedAt(Instant.now());
@@ -123,6 +133,7 @@ public class FileService {
             storageService.deleteFile(metadata.getStorageKey());
         } catch (Exception e) {
             log.warn("Failed to delete physical file: {}", metadata.getStorageKey(), e);
+            // Не выбрасываем исключение, т.к. метаданные уже обновлены
         }
 
         log.info("File deleted: {}", fileId);

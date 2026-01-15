@@ -3,6 +3,7 @@ package com.example.fileservice.controller;
 import com.example.fileservice.dto.AttachFilesRequest;
 import com.example.fileservice.dto.FileMetadataResponse;
 import com.example.fileservice.dto.FileUploadResponse;
+import com.example.fileservice.exception.UnauthorizedException;
 import com.example.fileservice.service.FileService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -63,7 +65,8 @@ public class FileController {
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID userId = extractUserId(jwt);
-        // Можно добавить проверку прав доступа
+        // TODO: Проверить права доступа пользователя к заявке
+        // Для этого может потребоваться интеграция с application-service
 
         fileService.attachFilesToApplication(request.getApplicationId(), request.getFileIds());
         return ResponseEntity.ok().build();
@@ -75,7 +78,7 @@ public class FileController {
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID userId = extractUserId(jwt);
-        // Можно добавить проверку прав доступа
+        // TODO: Проверить права доступа пользователя к заявке
 
         List<FileMetadataResponse> files = fileService.getFilesByApplication(applicationId);
         return ResponseEntity.ok(files);
@@ -87,9 +90,9 @@ public class FileController {
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID userId = extractUserId(jwt);
-        // Проверка, что пользователь является владельцем файла или админом
+        boolean isAdmin = isAdmin(jwt);
 
-        fileService.deleteFile(fileId);
+        fileService.deleteFile(fileId, userId, isAdmin);
         return ResponseEntity.noContent().build();
     }
 
@@ -98,6 +101,29 @@ public class FileController {
         if (userIdClaim == null) {
             userIdClaim = jwt.getClaimAsString("userId");
         }
-        return UUID.fromString(userIdClaim);
+        try {
+            return UUID.fromString(userIdClaim);
+        } catch (IllegalArgumentException e) {
+            throw new UnauthorizedException("Invalid user ID in token");
+        }
+    }
+
+    private boolean isAdmin(Jwt jwt) {
+        // Проверяем роли из JWT токена
+        List<String> roles = jwt.getClaimAsStringList("roles");
+        if (roles != null) {
+            return roles.contains("ROLE_ADMIN");
+        }
+
+        // Альтернативный вариант: проверка по realm_access
+        Map<String, Object> realmAccess = jwt.getClaim("realm_access");
+        if (realmAccess != null) {
+            List<String> realmRoles = (List<String>) realmAccess.get("roles");
+            if (realmRoles != null) {
+                return realmRoles.contains("admin") || realmRoles.contains("ROLE_ADMIN");
+            }
+        }
+
+        return false;
     }
 }
