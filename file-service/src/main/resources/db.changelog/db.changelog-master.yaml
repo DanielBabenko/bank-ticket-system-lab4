@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 001-create-files-table
+      id: 1-create-files-table
       author: liquibase
       changes:
         - createTable:
@@ -40,7 +40,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: 001-create-file-applications-table
+      id: 2-create-file-applications-table
       author: liquibase
       changes:
         - createTable:
