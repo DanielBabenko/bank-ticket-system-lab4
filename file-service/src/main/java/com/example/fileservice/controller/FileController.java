@@ -89,7 +89,7 @@ public class FileController {
             @ApiResponse(responseCode = "200", description = "Data about a single file"),
             @ApiResponse(responseCode = "404", description = "File with this name is not found")
     })
-    @GetMapping("/{name}")
+    @GetMapping("/{id}")
     public ResponseEntity<FileDto> getFileWithApplications(@PathVariable UUID id) {
         FileDto response = fileService.getFileById(id);
         log.info("Returning file {} with {} applications", id, response.getApplications().size());

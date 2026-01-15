@@ -187,11 +187,20 @@ public class ApplicationService {
                     for (Application appWithTags : appsWithTags) {
                         tagsMap.put(appWithTags.getId(), appWithTags.getTags());
                     }
+                    List<Application> appsWithFiles = applicationRepository.findByIdsWithFiles(applicationIds);
+                    Map<UUID, Set<UUID>> filesMap = new HashMap<>();
+                    for (Application appWithFiles : appsWithFiles) {
+                        filesMap.put(appWithFiles.getId(), appWithFiles.getFiles());
+                    }
                     return applications.stream()
                             .map(app -> {
                                 Set<String> tags = tagsMap.get(app.getId());
+                                Set<UUID> files = filesMap.get(app.getId());
                                 if (tags != null) {
                                     app.setTags(tags);
+                                }
+                                if (files != null) {
+                                    app.setFiles(files);
                                 }
                                 return toDto(app);
                             })
