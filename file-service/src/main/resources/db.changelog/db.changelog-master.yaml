@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: 001-create-files-table
-      author: DanielBabenko
+      author: liquibase
       changes:
         - createTable:
             tableName: files
@@ -41,7 +41,7 @@ databaseChangeLog:
 
   - changeSet:
       id: 001-create-file-applications-table
-      author: system
+      author: liquibase
       changes:
         - createTable:
             tableName: file_applications
