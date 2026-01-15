@@ -1,4 +1,4 @@
-package com.example.userservice.auth;
+package com.example.userservice.dto;
 
 public class AuthRequest {
     private String username;

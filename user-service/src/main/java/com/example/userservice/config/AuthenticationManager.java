@@ -1,4 +1,4 @@
-package com.example.userservice.auth;
+package com.example.userservice.config;
 
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;

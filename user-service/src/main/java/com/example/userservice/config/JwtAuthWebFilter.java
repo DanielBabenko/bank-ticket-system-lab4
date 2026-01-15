@@ -1,4 +1,4 @@
-package com.example.userservice.auth;
+package com.example.userservice.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +14,6 @@ import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.UUID;
 
 public class JwtAuthWebFilter implements WebFilter {
 

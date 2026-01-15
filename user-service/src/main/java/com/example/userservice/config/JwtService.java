@@ -1,4 +1,4 @@
-package com.example.userservice.auth;
+package com.example.userservice.config;
 
 import com.example.userservice.model.entity.User;
 import io.jsonwebtoken.*;
