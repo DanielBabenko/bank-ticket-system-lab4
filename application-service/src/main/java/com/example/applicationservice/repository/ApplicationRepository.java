@@ -1,7 +1,6 @@
 package com.example.applicationservice.repository;
 
 import com.example.applicationservice.model.entity.Application;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -25,19 +24,15 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
     @Query("SELECT a.id FROM Application a WHERE a.productId = :productId")
     List<UUID> findIdsByProductId(@Param("productId") UUID productId);
 
-    // РАЗДЕЛЬНЫЕ методы для избежания декартова произведения
-    @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.documents")
-    Page<Application> findAllWithDocuments(Pageable pageable);
-
-    @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.documents WHERE a.id IN :ids")
-    List<Application> findByIdsWithDocuments(@Param("ids") List<UUID> ids);
-
     @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.tags WHERE a.id IN :ids")
     List<Application> findByIdsWithTags(@Param("ids") List<UUID> ids);
 
+    @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.files WHERE a.id IN :ids")
+    List<Application> findByIdsWithFiles(@Param("ids") List<UUID> ids);
+
     // Отдельные методы для конкретной заявки
-    @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.documents WHERE a.id = :id")
-    Optional<Application> findByIdWithDocuments(@Param("id") UUID id);
+    @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.files WHERE a.id = :id")
+    Optional<Application> findByIdWithFiles(@Param("id") UUID id);
 
     @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.tags WHERE a.id = :id")
     Optional<Application> findByIdWithTags(@Param("id") UUID id);
@@ -46,6 +41,11 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
     @Transactional
     @Query(value = "DELETE FROM application_tag WHERE application_id = :applicationId", nativeQuery = true)
     void deleteTagsByApplicationId(@Param("applicationId") UUID applicationId);
+
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM application_file WHERE application_id = :applicationId", nativeQuery = true)
+    void deleteFilesByApplicationId(@Param("applicationId") UUID applicationId);
 
     // Методы для получения ID с пагинацией
     @Query("SELECT a.id FROM Application a " +
@@ -69,6 +69,9 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
 
     @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.tags t WHERE t = :tagName")
     List<Application> findByTag(@Param("tagName") String tagName);
+
+    @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.files f WHERE f = :fileId")
+    List<Application> findByFile(@Param("fileId") UUID fileId);
 
     long countByApplicantId(UUID applicantId);
 

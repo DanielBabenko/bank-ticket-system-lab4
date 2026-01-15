@@ -8,8 +8,8 @@ spring:
     config:
       server:
         git:
-          uri: https://github.com/DanielBabenko/repo_config.git
-          default-label: master
+          uri: https://github.com/KirillKrakov/repo_config.git
+          default-label: lab4
           searchPaths:
             - '{application}'
 

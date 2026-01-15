@@ -188,9 +188,9 @@ public class ApplicationIntegrationTest {
         assertEquals(ApplicationStatus.SUBMITTED, response.getBody().getStatus());
         assertNotNull(response.getBody().getCreatedAt());
 
-        assertNotNull(response.getBody().getDocuments());
-        assertEquals(1, response.getBody().getDocuments().size());
-        assertEquals("passport.pdf", response.getBody().getDocuments().get(0).getFileName());
+        assertNotNull(response.getBody().getFiles());
+        assertEquals(1, response.getBody().getFiles().size());
+        assertEquals("passport.pdf", response.getBody().getFiles().get(0).getFileName());
 
         assertNotNull(response.getBody().getTags());
         assertTrue(response.getBody().getTags().contains("urgent"));
@@ -844,8 +844,8 @@ public class ApplicationIntegrationTest {
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertNotNull(response.getBody().getDocuments());
-        assertTrue(response.getBody().getDocuments().isEmpty());
+        assertNotNull(response.getBody().getFiles());
+        assertTrue(response.getBody().getFiles().isEmpty());
     }
 
     @Test

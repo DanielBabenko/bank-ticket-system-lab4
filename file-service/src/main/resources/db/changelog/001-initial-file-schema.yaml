@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-file-table
+      author: kirillkrakov
+      changes:
+        - createTable:
+            tableName: file
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_file_name
+
+        - createIndex:
+            indexName: idx_file_name
+            tableName: file
+            columns:
+              - column:
+                  name: name

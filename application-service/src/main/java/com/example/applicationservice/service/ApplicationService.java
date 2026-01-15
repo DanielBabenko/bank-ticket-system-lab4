@@ -183,7 +183,7 @@ public class ApplicationService {
         }
         return Mono.fromCallable(() -> {
                     Pageable pageable = PageRequest.of(page, size);
-                    Page<Application> applicationsPage = applicationRepository.findAllWithDocuments(pageable);
+                    Page<Application> applicationsPage = applicationRepository.findAll(pageable);
                     List<Application> applications = applicationsPage.getContent();
                     if (applications.isEmpty()) {
                         return List.<ApplicationDto>of();
@@ -212,7 +212,7 @@ public class ApplicationService {
     @Transactional(readOnly = true)
     public Mono<ApplicationDto> findById(UUID id) {
         return Mono.fromCallable(() -> {
-            Optional<Application> appWithDocs = applicationRepository.findByIdWithDocuments(id);
+            Optional<Application> appWithDocs = applicationRepository.findByIdWithFiles(id);
             if (appWithDocs.isEmpty()) {
                 throw new NotFoundException("Application with this ID not found");
             }
@@ -254,7 +254,7 @@ public class ApplicationService {
             if (appIds.isEmpty()) {
                 return new ApplicationPage(List.of(), null);
             }
-            List<Application> appsWithDocs = applicationRepository.findByIdsWithDocuments(appIds);
+            List<Application> appsWithDocs = applicationRepository.findByIdsWithFiles(appIds);
             List<Application> appsWithTags = applicationRepository.findByIdsWithTags(appIds);
             Map<UUID, Application> appMap = new HashMap<>();
             for (Application app : appsWithDocs) {
@@ -432,7 +432,7 @@ public class ApplicationService {
             if (basicApp.getApplicantId().equals(actorId) && isManager) {
                 throw new ConflictException("Managers cannot change status of their own applications");
             }
-            Optional<Application> appWithDocs = applicationRepository.findByIdWithDocuments(applicationId);
+            Optional<Application> appWithDocs = applicationRepository.findByIdWithFiles(applicationId);
             Application app = appWithDocs.orElse(basicApp);
             Optional<Application> appWithTags = application_repository_findByIdWithTags_safe(applicationId);
             appWithTags.ifPresent(appWithTag -> app.setTags(appWithTag.getTags()));
@@ -578,7 +578,7 @@ public class ApplicationService {
                         return docDto;
                     })
                     .collect(Collectors.toList());
-            dto.setDocuments(docDtos);
+            dto.setFiles(docDtos);
         }
 
         if (app.getTags() != null) {

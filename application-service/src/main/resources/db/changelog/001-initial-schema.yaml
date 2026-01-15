@@ -41,36 +41,27 @@ databaseChangeLog:
                   defaultValue: 0
 
         - createTable:
-            tableName: document
+            tableName: application_file
             columns:
-              - column:
-                  name: id
-                  type: UUID
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: file_name
-                  type: VARCHAR(500)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: content_type
-                  type: VARCHAR(255)
-              - column:
-                  name: storage_path
-                  type: VARCHAR(1000)
               - column:
                   name: application_id
                   type: UUID
                   constraints:
                     nullable: false
+              - column:
+                  name: file_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+            addPrimaryKey:
+              columnNames: application_id, file_id
+              constraintName: pk_application_file
             addForeignKeyConstraint:
-              baseTableName: document
+              baseTableName: application_file
               baseColumnNames: application_id
               referencedTableName: application
               referencedColumnNames: id
-              constraintName: fk_document_application
+              constraintName: fk_application_file_application
               onDelete: CASCADE
 
         - createTable:
@@ -156,13 +147,6 @@ databaseChangeLog:
                   descending: true
 
         - createIndex:
-            indexName: idx_document_application
-            tableName: document
-            columns:
-              - column:
-                  name: application_id
-
-        - createIndex:
             indexName: idx_history_application
             tableName: application_history
             columns:
@@ -172,6 +156,13 @@ databaseChangeLog:
         - createIndex:
             indexName: idx_application_tag_application
             tableName: application_tag
+            columns:
+              - column:
+                  name: application_id
+
+        - createIndex:
+            indexName: idx_application_file_application
+            tableName: application_file
             columns:
               - column:
                   name: application_id
