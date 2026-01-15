@@ -106,16 +106,7 @@ public class FileController {
             return ResponseEntity.ok(List.of());
         }
 
-        List<File> files = fileService.getFiles(fileIds);
-
-        List<FileDto> dtos = files.stream()
-                .map(file -> {
-                    FileDto dto = new FileDto();
-                    dto.setId(file.getId());
-                    dto.setName(file.getName());
-                    return dto;
-                })
-                .collect(Collectors.toList());
+        List<FileDto> dtos = fileService.getFilesBatch(fileIds);
 
         log.info("Processed batch of {} files", dtos.size());
         return ResponseEntity.ok(dtos);
