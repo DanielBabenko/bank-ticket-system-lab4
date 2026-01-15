@@ -1,3 +1,81 @@
 databaseChangeLog:
-  - include:
-      file: db/changelog/001-create-files-table.yaml
+  - changeSet:
+      id: 001-create-files-table
+      author: DanielBabenko
+      changes:
+        - createTable:
+            tableName: files
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_type
+                  type: VARCHAR(100)
+              - column:
+                  name: file_size
+                  type: BIGINT
+              - column:
+                  name: storage_path
+                  type: VARCHAR(1000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: uploaded_by
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: uploaded_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 001-create-file-applications-table
+      author: system
+      changes:
+        - createTable:
+            tableName: file_applications
+            columns:
+              - column:
+                  name: file_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_file_applications_file_id
+                    references: files(id)
+              - column:
+                  name: application_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+
+        - createIndex:
+            indexName: idx_file_applications_file_id
+            tableName: file_applications
+            columns:
+              - column:
+                  name: file_id
+
+        - createIndex:
+            indexName: idx_file_applications_application_id
+            tableName: file_applications
+            columns:
+              - column:
+                  name: application_id
+
+        - createIndex:
+            indexName: idx_files_uploaded_by
+            tableName: files
+            columns:
+              - column:
+                  name: uploaded_by
