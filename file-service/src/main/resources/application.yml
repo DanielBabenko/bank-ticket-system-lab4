@@ -1,0 +1,47 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: file-service
+
+  datasource:
+    url: jdbc:postgresql://file-service-db:5432/file_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: true
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/bank-ticket-realm
+
+file:
+  storage:
+    type: LOCAL
+    local:
+      directory: /data/uploads
+    s3:
+      endpoint: http://minio:9000
+      access-key: minioadmin
+      secret-key: minioadmin
+      bucket: files
+
+logging:
+  level:
+    com.example.fileservice: DEBUG

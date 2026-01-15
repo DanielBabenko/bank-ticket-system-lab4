@@ -18,8 +18,8 @@ public class Document {
     @Column(name = "content_type")
     private String contentType;
 
-    @Column(name = "storage_path", length = 1000)
-    private String storagePath;
+    @Column
+    private UUID fileId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "application_id", nullable = false)
@@ -36,9 +36,9 @@ public class Document {
     public String getContentType() { return contentType; }
     public void setContentType(String contentType) { this.contentType = contentType; }
 
-    public String getStoragePath() { return storagePath; }
-    public void setStoragePath(String storagePath) { this.storagePath = storagePath; }
-
     public Application getApplication() { return application; }
     public void setApplication(Application application) { this.application = application; }
+
+    public UUID getFileId() { return fileId; }
+    public void setFileId(UUID fileId) { this.fileId = fileId; }
 }

@@ -1,8 +1,7 @@
-package com.example.userservice.auth;
+package com.example.userservice.config;
 
 import com.example.userservice.model.entity.User;
 import com.example.userservice.repository.UserRepository;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;

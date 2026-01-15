@@ -1,6 +1,7 @@
 package com.example.applicationservice.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.UUID;
 
@@ -9,7 +10,8 @@ public class DocumentDto {
     @NotBlank
     private String fileName;
     private String contentType;
-    private String storagePath;
+    @NotNull
+    private UUID fileId;
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -20,6 +22,6 @@ public class DocumentDto {
     public String getContentType() { return contentType; }
     public void setContentType(String contentType) { this.contentType = contentType; }
 
-    public String getStoragePath() { return storagePath; }
-    public void setStoragePath(String storagePath) { this.storagePath = storagePath; }
+    public UUID getFileId() { return fileId; }
+    public void setFileId(UUID fileId) { this.fileId = fileId; }
 }
