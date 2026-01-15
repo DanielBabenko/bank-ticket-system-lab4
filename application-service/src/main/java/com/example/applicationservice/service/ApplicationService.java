@@ -1,6 +1,7 @@
 package com.example.applicationservice.service;
 
 import com.example.applicationservice.dto.*;
+import com.example.applicationservice.event.FileEvent;
 import com.example.applicationservice.event.TagEvent;
 import com.example.applicationservice.exception.*;
 import com.example.applicationservice.feign.*;
@@ -36,7 +37,6 @@ public class ApplicationService {
 
     private final ApplicationRepository applicationRepository;
     private final ApplicationHistoryRepository applicationHistoryRepository;
-    private final DocumentRepository documentRepository;
     private final UserServiceClient userServiceClient;
     private final ProductServiceClient productServiceClient;
     private final KafkaSender<String, String> kafkaSender;
@@ -45,12 +45,10 @@ public class ApplicationService {
     public ApplicationService(
             ApplicationRepository applicationRepository,
             ApplicationHistoryRepository applicationHistoryRepository,
-            DocumentRepository documentRepository,
             UserServiceClient userServiceClient,
             ProductServiceClient productServiceClient, KafkaSender<String, String> kafkaSender, ObjectMapper objectMapper) {
         this.applicationRepository = applicationRepository;
         this.applicationHistoryRepository = applicationHistoryRepository;
-        this.documentRepository = documentRepository;
         this.userServiceClient = userServiceClient;
         this.productServiceClient = productServiceClient;
         this.kafkaSender = kafkaSender;
@@ -62,6 +60,9 @@ public class ApplicationService {
 
     @Value("${spring.kafka.topics.tag-attach-request:tag.attach.request}")
     private String tagAttachRequestTopic;
+
+    @Value("${spring.kafka.topics.file-attach-request:file.attach.request}")
+    private String fileAttachRequestTopic;
 
     /**
      * Create application.
@@ -128,20 +129,9 @@ public class ApplicationService {
                         app.setStatus(ApplicationStatus.SUBMITTED);
                         app.setCreatedAt(Instant.now());
 
-                        if (req.getDocuments() != null) {
-                            List<Document> docs = req.getDocuments().stream()
-                                    .map(dreq -> {
-                                        Document d = new Document();
-                                        d.setId(UUID.randomUUID());
-                                        d.setFileName(dreq.getFileName());
-                                        d.setContentType(dreq.getContentType());
-                                        d.setStoragePath(dreq.getStoragePath());
-                                        d.setApplication(app);
-                                        return d;
-                                    })
-                                    .collect(Collectors.toList());
-                            app.setDocuments(docs);
-                        }
+                        List<UUID> fileIds = req.getFiles() != null ? req.getFiles() : List.of();
+                        app.setFiles(new HashSet<>(fileIds));
+                        sendFileAttachRequest(app.getId(), actorId, fileIds);
 
                         applicationRepository.save(app);
 
@@ -155,6 +145,7 @@ public class ApplicationService {
                         applicationHistoryRepository.save(hist);
 
                         log.info("Application created: {}", app.getId());
+
                         return app;
                     }).subscribeOn(Schedulers.boundedElastic());
                 })
@@ -309,6 +300,33 @@ public class ApplicationService {
                 });
     }
 
+    // attachFiles now receives actorId and actorRoleClaim
+    @Transactional
+    public Mono<Void> attachFiles(UUID applicationId, List<UUID> fileIds, UUID actorId, String actorRoleClaim) {
+        return validateActor(applicationId, actorId, actorRoleClaim)
+                .flatMap(valid -> {
+                    if (!valid) {
+                        return Mono.error(new ForbiddenException("Insufficient permissions"));
+                    }
+                    return Mono.fromCallable(() -> {
+                        Application app = applicationRepository.findByIdWithFiles(applicationId)
+                                .orElseThrow(() -> new NotFoundException("Application not found"));
+
+                        // Обновляем теги локально
+                        if (app.getFiles() == null) app.setFiles(new HashSet<>());
+                        app.getFiles().addAll(fileIds);
+                        applicationRepository.save(app);
+
+                        log.info("Added {} files to existing application {} (async)", fileIds.size(), applicationId);
+
+                        // Асинхронно отправляем запрос на создание тегов
+                        sendFileAttachRequest(applicationId, actorId, fileIds);
+
+                        return (Void) null;
+                    }).subscribeOn(Schedulers.boundedElastic());
+                });
+    }
+
     /**
      * Отправка запроса на создание тегов
      */
@@ -393,6 +411,46 @@ public class ApplicationService {
         }
     }
 
+    /**
+     * Отправка запроса на прикрепление тегов
+     */
+    private void sendFileAttachRequest(UUID applicationId, UUID actorId, List<UUID> fileIds) {
+        try {
+            FileEvent event = new FileEvent(
+                    UUID.randomUUID(),
+                    "FILE_ATTACH_REQUEST",
+                    applicationId,
+                    actorId,
+                    fileIds
+            );
+
+            String message = objectMapper.writeValueAsString(event);
+
+            SenderRecord<String, String, String> record = SenderRecord.create(
+                    fileAttachRequestTopic,
+                    null,
+                    System.currentTimeMillis(),
+                    event.getEventId().toString(),
+                    message,
+                    null
+            );
+
+            kafkaSender.send(Mono.just(record))
+                    .doOnNext(result -> {
+                        if (result.exception() == null) {
+                            log.info("File attach request sent for application: {}, files: {}",
+                                    applicationId, fileIds);
+                        } else {
+                            log.error("Failed to send file attach request: {}",
+                                    result.exception().getMessage());
+                        }
+                    })
+                    .subscribe();
+
+        } catch (Exception e) {
+            log.error("Error sending file attach request: {}", e.getMessage());
+        }
+    }
 
     @Transactional
     public Mono<Void> removeTags(UUID applicationId, List<String> tagNames, UUID actorId, String actorRoleClaim) {
@@ -409,6 +467,26 @@ public class ApplicationService {
                         });
                         applicationRepository.save(app);
                         log.info("Removed {} tags from application {}", tagNames.size(), applicationId);
+                        return (Void) null;
+                    }).subscribeOn(Schedulers.boundedElastic());
+                });
+    }
+
+    @Transactional
+    public Mono<Void> removeFiles(UUID applicationId, List<UUID> fileIds, UUID actorId, String actorRoleClaim) {
+        return validateActor(applicationId, actorId, actorRoleClaim)
+                .flatMap(valid -> {
+                    if (!valid) {
+                        return Mono.error(new ForbiddenException("Insufficient permissions"));
+                    }
+                    return Mono.fromCallable(() -> {
+                        Application app = applicationRepository.findByIdWithFiles(applicationId)
+                                .orElseThrow(() -> new NotFoundException("Application not found"));
+                        fileIds.forEach(n -> {
+                            if (app.getFiles() != null) app.getFiles().remove(n);
+                        });
+                        applicationRepository.save(app);
+                        log.info("Removed {} files from application {}", fileIds.size(), applicationId);
                         return (Void) null;
                     }).subscribeOn(Schedulers.boundedElastic());
                 });
@@ -471,7 +549,7 @@ public class ApplicationService {
             return Mono.error(new ForbiddenException("Only admin can delete applications"));
         }
         return Mono.fromCallable(() -> {
-            documentRepository.deleteByApplicationId(applicationId);
+            applicationRepository.deleteFilesByApplicationId(applicationId);
             applicationHistoryRepository.deleteByApplicationId(applicationId);
             applicationRepository.deleteTagsByApplicationId(applicationId);
             applicationRepository.deleteById(applicationId);
@@ -503,7 +581,7 @@ public class ApplicationService {
         return Mono.fromCallable(() -> {
             List<UUID> applicationIds = applicationRepository.findIdsByApplicantId(userId);
             for (UUID appId : applicationIds) {
-                documentRepository.deleteByApplicationId(appId);
+                applicationRepository.deleteFilesByApplicationId(appId);
                 applicationHistoryRepository.deleteByApplicationId(appId);
                 applicationRepository.deleteTagsByApplicationId(appId);
                 applicationRepository.deleteById(appId);
@@ -519,7 +597,7 @@ public class ApplicationService {
         return Mono.fromCallable(() -> {
             List<UUID> productIds = applicationRepository.findIdsByProductId(productId);
             for (UUID appId : productIds) {
-                documentRepository.deleteByApplicationId(appId);
+                applicationRepository.deleteFilesByApplicationId(appId);
                 applicationHistoryRepository.deleteByApplicationId(appId);
                 applicationRepository.deleteTagsByApplicationId(appId);
                 applicationRepository.deleteById(appId);
@@ -548,6 +626,24 @@ public class ApplicationService {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    @Transactional(readOnly = true)
+    public Mono<List<ApplicationInfoDto>> findApplicationsByFile(UUID fileId) {
+        return Mono.fromCallable(() -> {
+            try {
+                List<Application> applications = applicationRepository.findByFile(fileId);
+                List<ApplicationInfoDto> dtos = applications.stream()
+                        .map(this::toInfoDto)
+                        .collect(Collectors.toList());
+
+                log.info("Found {} applications with file {}", dtos.size(), fileId);
+                return dtos;
+            } catch (Exception e) {
+                log.error("Failed to get applications by file {}: {}", fileId, e.getMessage());
+                throw new BadRequestException("Failed to get applications by tag: " + e.getMessage());
+            }
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
     // helper mapping methods unchanged
     private ApplicationInfoDto toInfoDto(Application app) {
         ApplicationInfoDto dto = new ApplicationInfoDto();
@@ -567,18 +663,8 @@ public class ApplicationService {
         dto.setStatus(app.getStatus());
         dto.setCreatedAt(app.getCreatedAt());
 
-        if (app.getDocuments() != null) {
-            List<DocumentDto> docDtos = app.getDocuments().stream()
-                    .map(doc -> {
-                        DocumentDto docDto = new DocumentDto();
-                        docDto.setId(doc.getId());
-                        docDto.setFileName(doc.getFileName());
-                        docDto.setContentType(doc.getContentType());
-                        docDto.setStoragePath(doc.getStoragePath());
-                        return docDto;
-                    })
-                    .collect(Collectors.toList());
-            dto.setFiles(docDtos);
+        if (app.getFiles() != null) {
+            dto.setFiles(new ArrayList<>(app.getFiles()));
         }
 
         if (app.getTags() != null) {
@@ -608,10 +694,7 @@ public class ApplicationService {
                         return true;
                     }
                     // if actor has admin or manager role (from token) -> allowed
-                    if ("ROLE_ADMIN".equals(actorRoleClaim) || "ROLE_MANAGER".equals(actorRoleClaim)) {
-                        return true;
-                    }
-                    return false;
+                    return "ROLE_ADMIN".equals(actorRoleClaim) || "ROLE_MANAGER".equals(actorRoleClaim);
                 }).subscribeOn(Schedulers.boundedElastic()))
                 .defaultIfEmpty(false);
     }
