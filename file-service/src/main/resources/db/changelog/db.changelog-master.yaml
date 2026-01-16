@@ -58,10 +58,6 @@ databaseChangeLog:
                     nullable: false
 
               - column:
-                  name: uploader_username
-                  type: varchar(100)
-
-              - column:
                   name: bucket_name
                   type: varchar(100)
                   defaultValue: "files"

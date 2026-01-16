@@ -2,9 +2,7 @@ package com.example.fileservice.service;
 
 import com.example.fileservice.dto.ApplicationInfoDto;
 import com.example.fileservice.dto.FileDto;
-import com.example.fileservice.exception.BadRequestException;
-import com.example.fileservice.exception.NotFoundException;
-import com.example.fileservice.exception.ServiceUnavailableException;
+import com.example.fileservice.exception.*;
 import com.example.fileservice.feign.ApplicationServiceClient;
 import com.example.fileservice.model.entity.File;
 import com.example.fileservice.repository.FileRepository;
@@ -13,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -41,7 +40,7 @@ public class FileService {
     }
 
     @Transactional
-    public FileDto uploadFile(MultipartFile multipartFile, UUID uploaderId, String uploaderUsername, String description) {
+    public FileDto uploadFile(MultipartFile multipartFile, UUID uploaderId, String description) {
         // Валидация файла
         if (multipartFile.isEmpty()) {
             throw new BadRequestException("File is empty");
@@ -61,8 +60,7 @@ public class FileService {
                 originalFilename,
                 multipartFile.getSize(),
                 multipartFile.getContentType(),
-                uploaderId,
-                uploaderUsername
+                uploaderId
         );
         file.setDescription(description);
 
@@ -74,7 +72,7 @@ public class FileService {
             fileRepository.save(file);
 
             log.info("File uploaded successfully: {} ({} bytes) by user {}",
-                    originalFilename, multipartFile.getSize(), uploaderUsername);
+                    originalFilename, multipartFile.getSize(), uploaderId);
 
             // Конвертируем в DTO
             return toDto(file);
@@ -85,13 +83,25 @@ public class FileService {
         }
     }
 
-    public InputStreamWithMetadata downloadFile(UUID fileId) {
+    public InputStreamWithMetadata downloadFile(UUID fileId, UUID userId, Jwt jwt) {
         File file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new NotFoundException("File not found: " + fileId));
 
         // Проверяем, существует ли файл в хранилище
         if (!minioService.fileExists(file.getStorageKey())) {
             throw new NotFoundException("File not found in storage: " + fileId);
+        }
+
+        boolean isAdminOrManager = false;
+        if (jwt != null) {
+            Object roleClaim = jwt.getClaims().get("role");
+            if (roleClaim != null && (("ROLE_ADMIN".equals(roleClaim.toString())) || ("ROLE_MANAGER".equals(roleClaim.toString())))) {
+                isAdminOrManager = true;
+            }
+        }
+
+        if (!(file.getUploaderId().equals(userId) || isAdminOrManager)) {
+            throw new ForbiddenException("You must be uploader, manager or admin to download this file");
         }
 
         // Получаем поток файла
@@ -103,6 +113,40 @@ public class FileService {
                 file.getMimeType(),
                 file.getSize()
         );
+    }
+
+    @Transactional
+    public void deleteFile(UUID fileId, UUID userId, Jwt jwt) {
+        if (fileId == null) {
+            throw new BadRequestException("File ID is required");
+        }
+
+        File file = fileRepository.findById(fileId)
+                .orElseThrow(() -> new NotFoundException("File not found: " + fileId));
+
+        boolean isAdmin = false;
+        if (jwt != null) {
+            Object roleClaim = jwt.getClaims().get("role");
+            if (roleClaim != null && (("ROLE_ADMIN".equals(roleClaim.toString())))) {
+                isAdmin = true;
+            }
+        }
+
+        if (!(file.getUploaderId().equals(userId) || isAdmin)) {
+            throw new ForbiddenException("You must be uploader or admin to delete this file");
+        }
+
+        try {
+            minioService.deleteFile(file.getStorageKey());
+        } catch (Exception e) {
+            log.error("Failed to delete file from MinIO: {}", file.getStorageKey(), e);
+            throw new BadRequestException("Failed to delete file from MinIO");
+        }
+
+        fileRepository.delete(file);
+
+        log.info("File deleted successfully: {} (ID: {}) by user {}",
+                file.getOriginalName(), fileId, userId);
     }
 
     @Transactional
@@ -120,10 +164,10 @@ public class FileService {
 
     // Метод для совместимости с Feign (возвращает DTO)
     @Transactional
-    public List<FileDto> getFilesBatch(List<UUID> fileIds) {
+    public List<UUID> getFilesBatch(List<UUID> fileIds) {
         List<File> files = getFiles(fileIds);
         return files.stream()
-                .map(this::toDto)
+                .map(File::getId)
                 .collect(Collectors.toList());
     }
 
@@ -159,7 +203,6 @@ public class FileService {
             dto.setExtension(file.getExtension());
             dto.setUploadDate(file.getUploadDate());
             dto.setUploaderId(file.getUploaderId());
-            dto.setUploaderUsername(file.getUploaderUsername());
             dto.setDescription(file.getDescription());
             dto.setDownloadUrl(minioService.getFileUrl(file.getStorageKey()));
             dto.setApplications(applications);
@@ -176,7 +219,6 @@ public class FileService {
             dto.setExtension(file.getExtension());
             dto.setUploadDate(file.getUploadDate());
             dto.setUploaderId(file.getUploaderId());
-            dto.setUploaderUsername(file.getUploaderUsername());
             dto.setDescription(file.getDescription());
             dto.setDownloadUrl(minioService.getFileUrl(file.getStorageKey()));
             dto.setApplications(Collections.emptyList());

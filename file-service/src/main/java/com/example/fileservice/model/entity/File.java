@@ -34,9 +34,6 @@ public class File {
     @Column(nullable = false)
     private UUID uploaderId;
 
-    @Column
-    private String uploaderUsername;
-
     @Column(nullable = false)
     private String bucketName = "files"; // Имя бакета в MinIO
 
@@ -50,13 +47,12 @@ public class File {
     public File() {}
 
     public File(UUID id, String originalName, Long size, String mimeType,
-                UUID uploaderId, String uploaderUsername) {
+                UUID uploaderId) {
         this.id = id;
         this.originalName = originalName;
         this.size = size;
         this.mimeType = mimeType;
         this.uploaderId = uploaderId;
-        this.uploaderUsername = uploaderUsername;
         this.uploadDate = LocalDateTime.now();
         this.extension = extractExtension(originalName);
         this.storageKey = generateStorageKey(id, extension);
@@ -103,9 +99,6 @@ public class File {
 
     public UUID getUploaderId() { return uploaderId; }
     public void setUploaderId(UUID uploaderId) { this.uploaderId = uploaderId; }
-
-    public String getUploaderUsername() { return uploaderUsername; }
-    public void setUploaderUsername(String uploaderUsername) { this.uploaderUsername = uploaderUsername; }
 
     public String getBucketName() { return bucketName; }
     public void setBucketName(String bucketName) { this.bucketName = bucketName; }

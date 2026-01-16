@@ -1,7 +1,6 @@
 package com.example.fileservice.controller;
 
 import com.example.fileservice.dto.FileDto;
-import com.example.fileservice.model.entity.File;
 import com.example.fileservice.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -20,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -67,16 +65,13 @@ public class FileController {
 
         // Получаем информацию о пользователе из JWT
         String userIdStr = jwt.getClaimAsString("uid");
-        String username = jwt.getClaimAsString("preferred_username");
-
         if (userIdStr == null) {
             throw new IllegalArgumentException("User ID not found in token");
         }
-
         UUID userId = UUID.fromString(userIdStr);
 
         // Загружаем файл
-        FileDto fileDto = fileService.uploadFile(file, userId, username, description);
+        FileDto fileDto = fileService.uploadFile(file, userId, description);
 
         URI location = uriBuilder.path("/api/v1/files/{id}")
                 .buildAndExpand(fileDto.getId())
@@ -88,14 +83,26 @@ public class FileController {
     @Operation(summary = "Download a file", description = "Downloads a file by its ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "File downloaded successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "403", description = "You must be uploader, manager or admin to download this file"),
             @ApiResponse(responseCode = "404", description = "File not found")
     })
     @GetMapping("/{id}/download")
     public ResponseEntity<InputStreamResource> downloadFile(
             @Parameter(description = "File ID")
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
 
-        FileService.InputStreamWithMetadata fileData = fileService.downloadFile(id);
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal Jwt jwt) {
+
+        // Получаем информацию о пользователе из JWT
+        String userIdStr = jwt.getClaimAsString("uid");
+        if (userIdStr == null) {
+            throw new IllegalArgumentException("User ID not found in token");
+        }
+        UUID userId = UUID.fromString(userIdStr);
+
+        FileService.InputStreamWithMetadata fileData = fileService.downloadFile(id, userId, jwt);
 
         // Настраиваем заголовки ответа
         ContentDisposition contentDisposition = ContentDisposition.attachment()
@@ -112,6 +119,38 @@ public class FileController {
         return ResponseEntity.ok()
                 .headers(headers)
                 .body(resource);
+    }
+
+    @Operation(
+            summary = "Delete a file",
+            description = "Deletes a file by its ID. Only file owner or admin can delete files."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "File deleted successfully"),
+            @ApiResponse(responseCode = "400", description = "Cannot delete file"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "403", description = "You must be uploader or admin to delete this file"),
+            @ApiResponse(responseCode = "404", description = "File not found")
+    })
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public ResponseEntity<Void> deleteFile(
+            @Parameter(description = "File ID", required = true)
+            @PathVariable("id") UUID id,
+
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal Jwt jwt) {
+
+        String userIdStr = jwt.getClaimAsString("uid");
+        if (userIdStr == null) {
+            throw new IllegalArgumentException("User ID not found in token");
+        }
+        UUID userId = UUID.fromString(userIdStr);
+
+        fileService.deleteFile(id, userId, jwt);
+
+        log.info("File deleted successfully: {} by user {}", id, userId);
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "List all files", description = "Returns list of files with metadata")
@@ -152,18 +191,18 @@ public class FileController {
     }
 
     // internal-запрос для application-service
-    @PostMapping("/batch")
+    @PostMapping("/check")
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<List<FileDto>> getFilesBatch(
+    public ResponseEntity<List<UUID>> getRealFileIds(
             @Valid @RequestBody List<UUID> fileIds) {
 
         if (fileIds == null || fileIds.isEmpty()) {
             return ResponseEntity.ok(List.of());
         }
 
-        List<FileDto> dtos = fileService.getFilesBatch(fileIds);
+        List<UUID> realIds = fileService.getFilesBatch(fileIds);
 
-        log.info("Processed batch of {} files", dtos.size());
-        return ResponseEntity.ok(dtos);
+        log.info("Processed batch of {} files", realIds.size());
+        return ResponseEntity.ok(realIds);
     }
 }

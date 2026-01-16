@@ -39,6 +39,7 @@ public class ApplicationService {
     private final ApplicationHistoryRepository applicationHistoryRepository;
     private final UserServiceClient userServiceClient;
     private final ProductServiceClient productServiceClient;
+    private final FileServiceClient fileServiceClient;
     private final KafkaSender<String, String> kafkaSender;
     private final ObjectMapper objectMapper;
 
@@ -46,11 +47,14 @@ public class ApplicationService {
             ApplicationRepository applicationRepository,
             ApplicationHistoryRepository applicationHistoryRepository,
             UserServiceClient userServiceClient,
-            ProductServiceClient productServiceClient, KafkaSender<String, String> kafkaSender, ObjectMapper objectMapper) {
+            ProductServiceClient productServiceClient,
+            FileServiceClient fileServiceClient,
+            KafkaSender<String, String> kafkaSender, ObjectMapper objectMapper) {
         this.applicationRepository = applicationRepository;
         this.applicationHistoryRepository = applicationHistoryRepository;
         this.userServiceClient = userServiceClient;
         this.productServiceClient = productServiceClient;
+        this.fileServiceClient = fileServiceClient;
         this.kafkaSender = kafkaSender;
         this.objectMapper = objectMapper;
     }
@@ -172,36 +176,60 @@ public class ApplicationService {
         if (size > 50) {
             return Flux.error(new BadRequestException("Page size cannot exceed 50"));
         }
+
         return Mono.fromCallable(() -> {
                     Pageable pageable = PageRequest.of(page, size);
                     Page<Application> applicationsPage = applicationRepository.findAll(pageable);
                     List<Application> applications = applicationsPage.getContent();
+
                     if (applications.isEmpty()) {
                         return List.<ApplicationDto>of();
                     }
+
                     List<UUID> applicationIds = applications.stream()
                             .map(Application::getId)
                             .collect(Collectors.toList());
+
+                    // Получаем заявки с тегами
                     List<Application> appsWithTags = applicationRepository.findByIdsWithTags(applicationIds);
                     Map<UUID, Set<String>> tagsMap = new HashMap<>();
                     for (Application appWithTags : appsWithTags) {
                         tagsMap.put(appWithTags.getId(), appWithTags.getTags());
                     }
+
+                    // Получаем заявки с файлами
                     List<Application> appsWithFiles = applicationRepository.findByIdsWithFiles(applicationIds);
                     Map<UUID, Set<UUID>> filesMap = new HashMap<>();
                     for (Application appWithFiles : appsWithFiles) {
                         filesMap.put(appWithFiles.getId(), appWithFiles.getFiles());
                     }
+
+                    // === ДОБАВЛЕНА ПРОВЕРКА СУЩЕСТВОВАНИЯ ФАЙЛОВ ===
+                    // Собираем все ID файлов из всех заявок
+                    Set<UUID> allFileIds = filesMap.values().stream()
+                            .flatMap(Set::stream)
+                            .collect(Collectors.toSet());
+
+                    // Проверяем существование файлов через file-service
+                    Map<UUID, Boolean> existingFilesMap = checkFilesExist(allFileIds);
+
                     return applications.stream()
                             .map(app -> {
                                 Set<String> tags = tagsMap.get(app.getId());
                                 Set<UUID> files = filesMap.get(app.getId());
+
+                                // Фильтруем только существующие файлы
+                                if (files != null && !files.isEmpty()) {
+                                    Set<UUID> existingFiles = files.stream()
+                                            .filter(fileId -> existingFilesMap.getOrDefault(fileId, false))
+                                            .collect(Collectors.toSet());
+                                    app.setFiles(existingFiles);
+                                }
+
                                 if (tags != null) {
                                     app.setTags(tags);
                                 }
-                                if (files != null) {
-                                    app.setFiles(files);
-                                }
+
                                 return toDto(app);
                             })
                             .collect(Collectors.toList());
@@ -216,9 +244,24 @@ public class ApplicationService {
             if (appWithDocs.isEmpty()) {
                 throw new NotFoundException("Application with this ID not found");
             }
+
             Application app = appWithDocs.get();
+
             Optional<Application> appWithTags = applicationRepository.findByIdWithTags(id);
             appWithTags.ifPresent(appWithTag -> app.setTags(appWithTag.getTags()));
+
+            // === ДОБАВЛЕНА ПРОВЕРКА СУЩЕСТВОВАНИЯ ФАЙЛОВ ===
+            if (app.getFiles() != null && !app.getFiles().isEmpty()) {
+                Set<UUID> fileIds = app.getFiles();
+                Map<UUID, Boolean> existingFilesMap = checkFilesExist(fileIds);
+
+                // Фильтруем только существующие файлы
+                Set<UUID> existingFiles = fileIds.stream()
+                        .filter(fileId -> existingFilesMap.getOrDefault(fileId, false))
+                        .collect(Collectors.toSet());
+                app.setFiles(existingFiles);
+            }
+
             return toDto(app);
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -228,9 +271,11 @@ public class ApplicationService {
         if (limit <= 0) {
             return Mono.error(new BadRequestException("limit must be greater than 0"));
         }
+
         int capped = Math.min(limit, 50);
         final Instant[] tsHolder = new Instant[1];
         final UUID[] idHolder = new UUID[1];
+
         if (cursor != null && !cursor.trim().isEmpty()) {
             try {
                 CursorUtil.Decoded decoded = CursorUtil.decode(cursor);
@@ -242,44 +287,117 @@ public class ApplicationService {
                 return Mono.error(new BadRequestException("Invalid cursor format: " + e.getMessage()));
             }
         }
+
         return Mono.fromCallable(() -> {
             Instant ts = tsHolder[0];
             UUID id = idHolder[0];
             List<UUID> appIds;
+
             if (ts == null) {
                 appIds = applicationRepository.findIdsFirstPage(capped);
             } else {
                 appIds = applicationRepository.findIdsByKeyset(ts, id, capped);
             }
+
             if (appIds.isEmpty()) {
                 return new ApplicationPage(List.of(), null);
             }
+
             List<Application> appsWithDocs = applicationRepository.findByIdsWithFiles(appIds);
             List<Application> appsWithTags = applicationRepository.findByIdsWithTags(appIds);
+
             Map<UUID, Application> appMap = new HashMap<>();
             for (Application app : appsWithDocs) {
                 appMap.put(app.getId(), app);
             }
+
             for (Application appWithTags : appsWithTags) {
                 Application app = appMap.get(appWithTags.getId());
                 if (app != null) {
                     app.setTags(appWithTags.getTags());
                 }
             }
+
+            // === ДОБАВЛЕНА ПРОВЕРКА СУЩЕСТВОВАНИЯ ФАЙЛОВ ===
+            // Собираем все ID файлов из всех заявок
+            Set<UUID> allFileIds = appMap.values().stream()
+                    .map(Application::getFiles)
+                    .filter(Objects::nonNull)
+                    .flatMap(Set::stream)
+                    .collect(Collectors.toSet());
+
+            // Проверяем существование файлов через file-service
+            Map<UUID, Boolean> existingFilesMap = checkFilesExist(allFileIds);
+
+            // Фильтруем файлы в каждой заявке
+            for (Application app : appMap.values()) {
+                if (app.getFiles() != null && !app.getFiles().isEmpty()) {
+                    Set<UUID> existingFiles = app.getFiles().stream()
+                            .filter(fileId -> existingFilesMap.getOrDefault(fileId, false))
+                            .collect(Collectors.toSet());
+                    app.setFiles(existingFiles);
+                }
+            }
+
             List<Application> apps = appIds.stream()
                     .map(appMap::get)
                     .filter(Objects::nonNull)
                     .toList();
+
             List<ApplicationDto> dtos = apps.stream()
                     .map(this::toDto)
                     .collect(Collectors.toList());
+
             String nextCursor = null;
             if (!apps.isEmpty()) {
                 Application last = apps.get(apps.size() - 1);
                 nextCursor = CursorUtil.encode(last.getCreatedAt(), last.getId());
             }
+
             return new ApplicationPage(dtos, nextCursor);
         }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    /**
+     * Вспомогательный метод для проверки существования файлов
+     * Возвращает Map<FileId, Exists>
+     */
+    private Map<UUID, Boolean> checkFilesExist(Set<UUID> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        try {
+            List<UUID> fileIdsList = new ArrayList<>(fileIds);
+            List<UUID> existingFileIds = fileServiceClient.checkFilesExist(fileIdsList);
+
+            // Создаем Map для быстрой проверки
+            Map<UUID, Boolean> result = new HashMap<>();
+            for (UUID fileId : fileIds) {
+                result.put(fileId, false); // по умолчанию false
+            }
+
+            for (UUID existingFileId : existingFileIds) {
+                result.put(existingFileId, true);
+            }
+
+            log.debug("Checked {} files, found {} existing",
+                    fileIds.size(), existingFileIds.size());
+
+            return result;
+
+        } catch (Exception e) {
+            log.warn("Failed to check files existence: {}", e.getMessage());
+
+            // В случае ошибки считаем все файлы существующими
+            // (лучше показать файл, которого нет, чем скрыть существующий)
+            Map<UUID, Boolean> result = new HashMap<>();
+            for (UUID fileId : fileIds) {
+                result.put(fileId, true);
+            }
+
+            return result;
+        }
     }
 
     // attachTags now receives actorId and actorRoleClaim

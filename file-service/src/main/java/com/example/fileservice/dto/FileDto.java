@@ -12,7 +12,6 @@ public class FileDto {
     private String extension;
     private LocalDateTime uploadDate;
     private UUID uploaderId;
-    private String uploaderUsername;
     private String description;
     private String downloadUrl; // URL для скачивания
     private List<ApplicationInfoDto> applications;
@@ -38,9 +37,6 @@ public class FileDto {
 
     public UUID getUploaderId() { return uploaderId; }
     public void setUploaderId(UUID uploaderId) { this.uploaderId = uploaderId; }
-
-    public String getUploaderUsername() { return uploaderUsername; }
-    public void setUploaderUsername(String uploaderUsername) { this.uploaderUsername = uploaderUsername; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
