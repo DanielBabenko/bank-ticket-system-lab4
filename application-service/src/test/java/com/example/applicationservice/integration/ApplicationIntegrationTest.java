@@ -5,7 +5,6 @@ import com.example.applicationservice.dto.*;
 import com.example.applicationservice.model.entity.Application;
 import com.example.applicationservice.model.enums.ApplicationStatus;
 import com.example.applicationservice.repository.ApplicationRepository;
-import com.example.applicationservice.repository.DocumentRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -30,11 +29,11 @@ import reactor.kafka.sender.KafkaSender;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
@@ -70,6 +69,7 @@ public class ApplicationIntegrationTest {
         registry.add("spring.kafka.producer.bootstrap-servers", () -> "localhost:9092");
         registry.add("spring.kafka.topics.tag-create-request", () -> "tag.create.request");
         registry.add("spring.kafka.topics.tag-attach-request", () -> "tag.attach.request");
+        registry.add("spring.kafka.topics.file-attach-request", () -> "file.attach.request");
 
         // Disable Kafka auto-configuration for tests
         registry.add("spring.autoconfigure.exclude", () ->
@@ -86,14 +86,14 @@ public class ApplicationIntegrationTest {
     @Autowired
     private ApplicationRepository applicationRepository;
 
-    @Autowired
-    private DocumentRepository documentRepository;
-
     @MockitoBean
     private com.example.applicationservice.feign.UserServiceClient userServiceClient;
 
     @MockitoBean
     private com.example.applicationservice.feign.ProductServiceClient productServiceClient;
+
+    @MockitoBean
+    private com.example.applicationservice.feign.FileServiceClient fileServiceClient;
 
     @MockitoBean
     private KafkaSender<String, String> kafkaSender;
@@ -109,11 +109,12 @@ public class ApplicationIntegrationTest {
     private final UUID adminId = UUID.randomUUID();
     private final UUID managerId = UUID.randomUUID();
     private final UUID anotherApplicantId = UUID.randomUUID();
+    private final UUID fileId = UUID.randomUUID();
+    private final UUID anotherFileId = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
         applicationRepository.deleteAll();
-        documentRepository.deleteAll();
         setupMocks();
     }
 
@@ -134,6 +135,13 @@ public class ApplicationIntegrationTest {
         when(productServiceClient.productExists(any(UUID.class))).thenAnswer(invocation -> {
             UUID id = invocation.getArgument(0);
             return id.equals(productId);
+        });
+
+        // Мок для проверки существования файлов
+        when(fileServiceClient.checkFilesExist(anyList())).thenAnswer(invocation -> {
+            List<UUID> fileIds = invocation.getArgument(0);
+            // Возвращаем все переданные файлы как существующие
+            return fileIds;
         });
     }
 
@@ -159,12 +167,7 @@ public class ApplicationIntegrationTest {
         request.setApplicantId(applicantId);
         request.setProductId(productId);
         request.setTags(List.of("urgent", "new-customer"));
-
-        DocumentRequest doc = new DocumentRequest();
-        doc.setFileName("passport.pdf");
-        doc.setContentType("application/pdf");
-        doc.setStoragePath("/storage/passport.pdf");
-        request.setDocuments(List.of(doc));
+        request.setFiles(List.of(fileId));
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -188,9 +191,9 @@ public class ApplicationIntegrationTest {
         assertEquals(ApplicationStatus.SUBMITTED, response.getBody().getStatus());
         assertNotNull(response.getBody().getCreatedAt());
 
-        assertNotNull(response.getBody().getDocuments());
-        assertEquals(1, response.getBody().getDocuments().size());
-        assertEquals("passport.pdf", response.getBody().getDocuments().get(0).getFileName());
+        assertNotNull(response.getBody().getFiles());
+        assertEquals(1, response.getBody().getFiles().size());
+        assertEquals(fileId, response.getBody().getFiles().get(0));
 
         assertNotNull(response.getBody().getTags());
         assertTrue(response.getBody().getTags().contains("urgent"));
@@ -256,6 +259,7 @@ public class ApplicationIntegrationTest {
             app.setProductId(productId);
             app.setStatus(ApplicationStatus.SUBMITTED);
             app.setCreatedAt(java.time.Instant.now());
+            app.setFiles(new HashSet<>(List.of(UUID.randomUUID())));
             applicationRepository.save(app);
         }
 
@@ -306,6 +310,7 @@ public class ApplicationIntegrationTest {
         app.setStatus(ApplicationStatus.SUBMITTED);
         app.setCreatedAt(java.time.Instant.now());
         app.setTags(java.util.Set.of("test-tag"));
+        app.setFiles(new HashSet<>(List.of(fileId)));
         applicationRepository.save(app);
 
         String token = generateToken(adminId, "ROLE_ADMIN");
@@ -327,6 +332,8 @@ public class ApplicationIntegrationTest {
         assertEquals(applicantId, response.getBody().getApplicantId());
         assertNotNull(response.getBody().getTags());
         assertTrue(response.getBody().getTags().contains("test-tag"));
+        assertEquals(1, response.getBody().getFiles().size());
+        assertEquals(fileId, response.getBody().getFiles().get(0));
     }
 
     @Test
@@ -487,6 +494,130 @@ public class ApplicationIntegrationTest {
     }
 
     @Test
+    void addFiles_asApplicant_shouldReturnNoContent() {
+        Application app = new Application();
+        app.setId(UUID.randomUUID());
+        app.setApplicantId(applicantId);
+        app.setProductId(productId);
+        app.setStatus(ApplicationStatus.SUBMITTED);
+        app.setCreatedAt(java.time.Instant.now());
+        applicationRepository.save(app);
+
+        List<UUID> files = List.of(fileId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(generateToken(applicantId, "ROLE_CLIENT"));
+
+        HttpEntity<List<UUID>> entity = new HttpEntity<>(files, headers);
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/api/v1/applications/{id}/files",
+                HttpMethod.PUT,
+                entity,
+                Void.class,
+                app.getId()
+        );
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+
+        Application updatedApp = applicationRepository.findByIdWithFiles(app.getId()).orElseThrow();
+        assertTrue(updatedApp.getFiles().contains(fileId));
+    }
+
+    @Test
+    void addFiles_asAdmin_shouldReturnNoContent() {
+        Application app = new Application();
+        app.setId(UUID.randomUUID());
+        app.setApplicantId(applicantId);
+        app.setProductId(productId);
+        app.setStatus(ApplicationStatus.SUBMITTED);
+        app.setCreatedAt(java.time.Instant.now());
+        applicationRepository.save(app);
+
+        List<UUID> files = List.of(fileId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(generateToken(adminId, "ROLE_ADMIN"));
+
+        HttpEntity<List<UUID>> entity = new HttpEntity<>(files, headers);
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/api/v1/applications/{id}/files",
+                HttpMethod.PUT,
+                entity,
+                Void.class,
+                app.getId()
+        );
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+    }
+
+    @Test
+    void addFiles_withoutPermissions_shouldReturnForbidden() {
+        Application app = new Application();
+        app.setId(UUID.randomUUID());
+        app.setApplicantId(anotherApplicantId);
+        app.setProductId(productId);
+        app.setStatus(ApplicationStatus.SUBMITTED);
+        app.setCreatedAt(java.time.Instant.now());
+        applicationRepository.save(app);
+
+        List<UUID> files = List.of(fileId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(generateToken(applicantId, "ROLE_CLIENT"));
+
+        HttpEntity<List<UUID>> entity = new HttpEntity<>(files, headers);
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/api/v1/applications/{id}/files",
+                HttpMethod.PUT,
+                entity,
+                Void.class,
+                app.getId()
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+    }
+
+    @Test
+    void removeFiles_asApplicant_shouldReturnNoContent() {
+        Application app = new Application();
+        app.setId(UUID.randomUUID());
+        app.setApplicantId(applicantId);
+        app.setProductId(productId);
+        app.setStatus(ApplicationStatus.SUBMITTED);
+        app.setCreatedAt(java.time.Instant.now());
+        app.setFiles(new HashSet<>(Set.of(fileId, anotherFileId)));
+        applicationRepository.save(app);
+
+        List<UUID> filesToRemove = List.of(fileId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(generateToken(applicantId, "ROLE_CLIENT"));
+
+        HttpEntity<List<UUID>> entity = new HttpEntity<>(filesToRemove, headers);
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/api/v1/applications/{id}/files",
+                HttpMethod.DELETE,
+                entity,
+                Void.class,
+                app.getId()
+        );
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+
+        Application updatedApp = applicationRepository.findByIdWithFiles(app.getId()).orElseThrow();
+        assertFalse(updatedApp.getFiles().contains(fileId));
+        assertTrue(updatedApp.getFiles().contains(anotherFileId));
+    }
+
+    @Test
     void changeStatus_asAdmin_shouldReturnOk() {
         Application app = new Application();
         app.setId(UUID.randomUUID());
@@ -615,6 +746,7 @@ public class ApplicationIntegrationTest {
         app.setStatus(ApplicationStatus.SUBMITTED);
         app.setCreatedAt(java.time.Instant.now());
         app.setTags(java.util.Set.of("test-tag"));
+        app.setFiles(new HashSet<>(List.of(fileId)));
         applicationRepository.save(app);
 
         HttpHeaders headers = new HttpHeaders();
@@ -716,6 +848,7 @@ public class ApplicationIntegrationTest {
             app.setStatus(ApplicationStatus.SUBMITTED);
             app.setCreatedAt(java.time.Instant.now());
             app.setTags(java.util.Set.of("tag" + i));
+            app.setFiles(new HashSet<>(List.of(UUID.randomUUID())));
             applicationRepository.save(app);
         }
 
@@ -744,6 +877,7 @@ public class ApplicationIntegrationTest {
             app.setStatus(ApplicationStatus.SUBMITTED);
             app.setCreatedAt(java.time.Instant.now());
             app.setTags(java.util.Set.of("tag" + i));
+            app.setFiles(new HashSet<>(List.of(UUID.randomUUID())));
             applicationRepository.save(app);
         }
 
@@ -797,6 +931,40 @@ public class ApplicationIntegrationTest {
     }
 
     @Test
+    void getApplicationsByFile_shouldReturnApplications() {
+        Application app = new Application();
+        app.setId(UUID.randomUUID());
+        app.setApplicantId(applicantId);
+        app.setProductId(productId);
+        app.setStatus(ApplicationStatus.SUBMITTED);
+        app.setCreatedAt(java.time.Instant.now());
+        app.setFiles(new HashSet<>(List.of(fileId)));
+        applicationRepository.save(app);
+
+        Application app2 = new Application();
+        app2.setId(UUID.randomUUID());
+        app2.setApplicantId(anotherApplicantId);
+        app2.setProductId(productId);
+        app2.setStatus(ApplicationStatus.SUBMITTED);
+        app2.setCreatedAt(java.time.Instant.now());
+        app2.setFiles(new HashSet<>(List.of(anotherFileId)));
+        applicationRepository.save(app2);
+
+        ResponseEntity<List<ApplicationInfoDto>> response = restTemplate.exchange(
+                "/api/v1/applications/by-file?file={fileId}",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<List<ApplicationInfoDto>>() {},
+                fileId
+        );
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+        assertEquals(app.getId(), response.getBody().get(0).getId());
+    }
+
+    @Test
     void createApplication_withEmptyTags_shouldReturnCreated() {
         ApplicationRequest request = new ApplicationRequest();
         request.setApplicantId(applicantId);
@@ -823,11 +991,11 @@ public class ApplicationIntegrationTest {
     }
 
     @Test
-    void createApplication_withEmptyDocuments_shouldReturnCreated() {
+    void createApplication_withEmptyFiles_shouldReturnCreated() {
         ApplicationRequest request = new ApplicationRequest();
         request.setApplicantId(applicantId);
         request.setProductId(productId);
-        request.setDocuments(List.of());
+        request.setFiles(List.of());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -844,8 +1012,8 @@ public class ApplicationIntegrationTest {
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertNotNull(response.getBody().getDocuments());
-        assertTrue(response.getBody().getDocuments().isEmpty());
+        assertNotNull(response.getBody().getFiles());
+        assertTrue(response.getBody().getFiles().isEmpty());
     }
 
     @Test

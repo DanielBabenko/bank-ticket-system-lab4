@@ -268,6 +268,94 @@ services:
     networks:
       - bank-network
 
+  postgres-file:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: filedb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5438:5432"
+    volumes:
+      - pgdata-file:/var/lib/postgresql/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    hostname: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_DEFAULT_BUCKETS: "files,public,private"
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - bank-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+
+  file-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE_PATH: file-service
+        JAR_NAME: file-service-1.0.0.jar
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      FILE_DB_URL: jdbc:postgresql://postgres-file:5432/filedb
+      FILE_DB_USER: postgres
+      FILE_DB_PASS: postgres
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-discovery:8761/eureka
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET_NAME: files
+      SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: 10MB
+      SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: 10MB
+    depends_on:
+      postgres-file:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      service-discovery:
+        condition: service_healthy
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - bank-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
   gateway:
     build:
       context: .
@@ -290,6 +378,8 @@ services:
       assignment-service:
         condition: service_started
       tag-service:
+        condition: service_started
+      file-service:
         condition: service_started
     networks:
       - bank-network
@@ -391,3 +481,5 @@ volumes:
   pgdata-assignment:
   pgdata-app:
   pgdata-tag:
+  pgdata-file:
+  minio-data:

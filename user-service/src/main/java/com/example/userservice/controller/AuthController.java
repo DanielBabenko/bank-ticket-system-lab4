@@ -1,16 +1,15 @@
 package com.example.userservice.controller;
 
-import com.example.userservice.auth.AuthRequest;
-import com.example.userservice.auth.AuthResponse;
-import com.example.userservice.auth.AuthenticationManager;
-import com.example.userservice.auth.JwtService;
+import com.example.userservice.dto.AuthRequest;
+import com.example.userservice.dto.AuthResponse;
+import com.example.userservice.config.AuthenticationManager;
+import com.example.userservice.config.JwtService;
 import com.example.userservice.exception.UnauthorizedException;
 import com.example.userservice.repository.UserRepository;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 

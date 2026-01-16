@@ -136,6 +136,48 @@ public class ApplicationController {
         return applicationService.removeTags(id, tags, actorId, roleStr);
     }
 
+    // Add files
+    @PutMapping("/{id}/files")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono<Void> addFiles(
+            @PathVariable UUID id,
+            @RequestBody List<UUID> files,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        log.info("Adding files to application {} (auth principal {})", id, jwt != null ? jwt.getSubject() : "anonymous");
+
+        if (jwt == null) {
+            return Mono.error(new UnauthorizedException("Authentication required"));
+        }
+        String uid = jwt.getClaimAsString("uid");
+        if (uid == null) uid = jwt.getSubject();
+        UUID actorId = UUID.fromString(uid);
+        String roleStr = jwt.getClaimAsString("role");
+
+        return applicationService.attachFiles(id, files, actorId, roleStr);
+    }
+
+    // Remove files
+    @DeleteMapping("/{id}/files")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono<Void> removeFiles(
+            @PathVariable UUID id,
+            @RequestBody List<UUID> files,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        log.info("Removing files from application {} (auth principal {})", id, jwt != null ? jwt.getSubject() : "anonymous");
+
+        if (jwt == null) {
+            return Mono.error(new UnauthorizedException("Authentication required"));
+        }
+        String uid = jwt.getClaimAsString("uid");
+        if (uid == null) uid = jwt.getSubject();
+        UUID actorId = UUID.fromString(uid);
+        String roleStr = jwt.getClaimAsString("role");
+
+        return applicationService.removeFiles(id, files, actorId, roleStr);
+    }
+
     // Change status
     @PutMapping("/{id}/status")
     public Mono<ApplicationDto> changeStatus(
@@ -212,5 +254,11 @@ public class ApplicationController {
     public Mono<List<ApplicationInfoDto>> getApplicationsByTag(@RequestParam("tag") String tagName) {
         log.debug("Getting applications with tag: {}", tagName);
         return applicationService.findApplicationsByTag(tagName);
+    }
+
+    @GetMapping("/by-file")
+    public Mono<List<ApplicationInfoDto>> getApplicationsByFile(@RequestParam("file") UUID fileId) {
+        log.debug("Getting applications with file: {}", fileId);
+        return applicationService.findApplicationsByFile(fileId);
     }
 }

@@ -32,8 +32,10 @@ public class Application {
     @Version
     private Long version;
 
-    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Document> documents = new ArrayList<>();
+    @ElementCollection
+    @CollectionTable(name = "application_file", joinColumns = @JoinColumn(name = "application_id"))
+    @Column(name = "file_id")
+    private Set<UUID> files = new HashSet<>();
 
     @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ApplicationHistory> history = new ArrayList<>();
@@ -41,7 +43,7 @@ public class Application {
     @ElementCollection
     @CollectionTable(name = "application_tag", joinColumns = @JoinColumn(name = "application_id"))
     @Column(name = "tag_name")
-    private Set<String> tags = new HashSet<>();  // Вместо Set<Tag>
+    private Set<String> tags = new HashSet<>();
 
     public Application() {}
 
@@ -67,8 +69,8 @@ public class Application {
     public Long getVersion() { return version; }
     public void setVersion(Long version) { this.version = version; }
 
-    public List<Document> getDocuments() { return documents; }
-    public void setDocuments(List<Document> documents) { this.documents = documents; }
+    public Set<UUID> getFiles() { return files; }
+    public void setFiles(Set<UUID> files) { this.files = files; }
 
     public List<ApplicationHistory> getHistory() { return history; }
     public void setHistory(List<ApplicationHistory> history) { this.history = history; }

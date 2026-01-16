@@ -1,0 +1,102 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 1-create-file-table
+      author: liquibase
+      changes:
+        - createTable:
+            tableName: file
+            remarks: Файлы
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+              - column:
+                  name: original_name
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: storage_key
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+
+              - column:
+                  name: mime_type
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: size
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: extension
+                  type: varchar(50)
+
+              - column:
+                  name: upload_date
+                  type: timestamp
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+              - column:
+                  name: uploader_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: bucket_name
+                  type: varchar(100)
+                  defaultValue: "files"
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: description
+                  type: text
+
+  - changeSet:
+      id: 2-create-file-indexes
+      author: liquibase
+      changes:
+        - createIndex:
+            tableName: file
+            indexName: idx_file_original_name
+            columns:
+              - column:
+                  name: original_name
+
+        - createIndex:
+            tableName: file
+            indexName: idx_file_uploader_id
+            columns:
+              - column:
+                  name: uploader_id
+
+        - createIndex:
+            tableName: file
+            indexName: idx_file_upload_date
+            columns:
+              - column:
+                  name: upload_date
+
+        - createIndex:
+            tableName: file
+            indexName: idx_file_storage_key
+            columns:
+              - column:
+                  name: storage_key
+            unique: true

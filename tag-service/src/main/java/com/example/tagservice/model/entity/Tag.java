@@ -16,8 +16,6 @@ public class Tag {
     @Column(nullable = false, length = 200)
     private String name;
 
-    // Примечание: связи ManyToMany не поддерживаются между микросервисами
-    // Это будет отдельная таблица в application-service
     @Transient
     private Set<UUID> applicationIds = new HashSet<>();
 

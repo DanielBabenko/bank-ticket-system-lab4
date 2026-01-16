@@ -34,7 +34,8 @@
 		<module>application-service</module>
 		<module>assignment-service</module>
 		<module>tag-service</module>
-	</modules>
+        <module>file-service</module>
+    </modules>
 
 	<dependencyManagement>
 		<dependencies>

@@ -6,7 +6,7 @@ import java.util.UUID;
 public class ApplicationRequest {
     private UUID applicantId;
     private UUID productId;
-    private List<DocumentRequest> documents;
+    private List<UUID> files;
     private List<String> tags;
 
     // getters/setters
@@ -16,8 +16,8 @@ public class ApplicationRequest {
     public UUID getProductId() { return productId; }
     public void setProductId(UUID productId) { this.productId = productId; }
 
-    public List<DocumentRequest> getDocuments() { return documents; }
-    public void setDocuments(List<DocumentRequest> documents) { this.documents = documents; }
+    public List<UUID> getFiles() { return files; }
+    public void setFiles(List<UUID> files) { this.files = files; }
 
     public List<String> getTags() { return tags; }
     public void setTags(List<String> tags) { this.tags = tags; }
