@@ -3,9 +3,12 @@ package com.example.fileservice.config;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.media.*;
+import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
+import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -21,7 +24,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("File Service API")
-                        .description("API для управления файлами")
+                        .description("API для управления файлами с загрузкой и скачиванием")
                         .version("1.0.0"))
                 .servers(List.of(
                         new Server()
@@ -34,7 +37,20 @@ public class OpenApiConfig {
                                         .scheme("bearer")
                                         .bearerFormat("JWT")
                         )
+                        // Добавляем схему для загрузки файлов
+                        .addSchemas("MultipartFile", new Schema<>()
+                                .type("string")
+                                .format("binary")
+                                .description("Файл для загрузки"))
                 )
                 .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME_NAME));
+    }
+
+    @Bean
+    public GroupedOpenApi publicApi() {
+        return GroupedOpenApi.builder()
+                .group("file-service")
+                .pathsToMatch("/api/v1/files/**")
+                .build();
     }
 }

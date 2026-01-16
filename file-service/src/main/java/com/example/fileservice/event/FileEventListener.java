@@ -55,7 +55,7 @@ public class FileEventListener {
             List<File> createdFiles = fileService.getFiles(event.getFileIds());
 
             log.info("Successfully processed {} files: {}", createdFiles.size(),
-                    createdFiles.stream().map(File::getName).toList());
+                    createdFiles.stream().map(File::getOriginalName).toList());
 
         } catch (Exception e) {
             log.error("Error processing file event: {}", e.getMessage(), e);

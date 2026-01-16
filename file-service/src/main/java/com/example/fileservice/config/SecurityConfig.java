@@ -61,7 +61,9 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler)
                 )
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.POST, "/api/v1/file/batch").permitAll()
+                        .requestMatchers("/api/v1/files/download/**").permitAll()
+                        .requestMatchers("/api/v1/files/upload").authenticated()
+                        .requestMatchers("/api/v1/files/**").permitAll()
                         .requestMatchers("/actuator/**", "/v3/api-docs/**",
                                 "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated()

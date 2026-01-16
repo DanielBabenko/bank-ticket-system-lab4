@@ -15,36 +15,94 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 public class FileService {
-    
+
     private static final Logger log = LoggerFactory.getLogger(FileService.class);
     private final FileRepository fileRepository;
     private final ApplicationServiceClient applicationServiceClient;
+    private final MinioService minioService;
 
-    public FileService(FileRepository fileRepository, ApplicationServiceClient applicationServiceClient) {
+    public FileService(FileRepository fileRepository,
+                       ApplicationServiceClient applicationServiceClient,
+                       MinioService minioService) {
         this.fileRepository = fileRepository;
         this.applicationServiceClient = applicationServiceClient;
+        this.minioService = minioService;
     }
 
     @Transactional
-    public File createIfNotExists(String name) {
-        return fileRepository.findByName(name)
-                .orElseGet(() -> {
-                    File file = new File();
-                    file.setId(UUID.randomUUID());
-                    file.setName(name.trim());
-                    File saved = fileRepository.save(file);
-                    log.info("Created new file: {}", name);
-                    return saved;
-                });
+    public FileDto uploadFile(MultipartFile multipartFile, UUID uploaderId, String uploaderUsername, String description) {
+        // Валидация файла
+        if (multipartFile.isEmpty()) {
+            throw new BadRequestException("File is empty");
+        }
+
+        String originalFilename = multipartFile.getOriginalFilename();
+        if (originalFilename == null || originalFilename.trim().isEmpty()) {
+            throw new BadRequestException("File name is required");
+        }
+
+        // Генерируем UUID для файла
+        UUID fileId = UUID.randomUUID();
+
+        // Создаем сущность файла
+        File file = new File(
+                fileId,
+                originalFilename,
+                multipartFile.getSize(),
+                multipartFile.getContentType(),
+                uploaderId,
+                uploaderUsername
+        );
+        file.setDescription(description);
+
+        try {
+            // Загружаем файл в MinIO
+            minioService.uploadFile(multipartFile, file.getStorageKey());
+
+            // Сохраняем метаданные в БД
+            fileRepository.save(file);
+
+            log.info("File uploaded successfully: {} ({} bytes) by user {}",
+                    originalFilename, multipartFile.getSize(), uploaderUsername);
+
+            // Конвертируем в DTO
+            return toDto(file);
+
+        } catch (IOException e) {
+            log.error("Error uploading file: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to process file upload", e);
+        }
+    }
+
+    public InputStreamWithMetadata downloadFile(UUID fileId) {
+        File file = fileRepository.findById(fileId)
+                .orElseThrow(() -> new NotFoundException("File not found: " + fileId));
+
+        // Проверяем, существует ли файл в хранилище
+        if (!minioService.fileExists(file.getStorageKey())) {
+            throw new NotFoundException("File not found in storage: " + fileId);
+        }
+
+        // Получаем поток файла
+        InputStream fileStream = minioService.downloadFile(file.getStorageKey());
+
+        return new InputStreamWithMetadata(
+                fileStream,
+                file.getOriginalName(),
+                file.getMimeType(),
+                file.getSize()
+        );
     }
 
     @Transactional
@@ -65,12 +123,7 @@ public class FileService {
     public List<FileDto> getFilesBatch(List<UUID> fileIds) {
         List<File> files = getFiles(fileIds);
         return files.stream()
-                .map(file -> {
-                    FileDto dto = new FileDto();
-                    dto.setId(file.getId());
-                    dto.setName(file.getName());
-                    return dto;
-                })
+                .map(this::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -78,7 +131,6 @@ public class FileService {
     public Page<FileDto> listAll(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<File> files = fileRepository.findAll(pageable);
-
         return files.map(this::toDto);
     }
 
@@ -98,18 +150,42 @@ public class FileService {
             if (applications == null) {
                 throw new ServiceUnavailableException("Application service is unavailable now");
             }
+
             FileDto dto = new FileDto();
             dto.setId(file.getId());
-            dto.setName(file.getName());
+            dto.setOriginalName(file.getOriginalName());
+            dto.setMimeType(file.getMimeType());
+            dto.setSize(file.getSize());
+            dto.setExtension(file.getExtension());
+            dto.setUploadDate(file.getUploadDate());
+            dto.setUploaderId(file.getUploaderId());
+            dto.setUploaderUsername(file.getUploaderUsername());
+            dto.setDescription(file.getDescription());
+            dto.setDownloadUrl(minioService.getFileUrl(file.getStorageKey()));
             dto.setApplications(applications);
+
             return dto;
         } catch (Exception e) {
-            log.error("Error fetching applications for file {}: {}", file.getName(), e.getMessage());
+            log.error("Error fetching applications for file {}: {}", file.getOriginalName(), e.getMessage());
+
             FileDto dto = new FileDto();
             dto.setId(file.getId());
-            dto.setName(file.getName());
+            dto.setOriginalName(file.getOriginalName());
+            dto.setMimeType(file.getMimeType());
+            dto.setSize(file.getSize());
+            dto.setExtension(file.getExtension());
+            dto.setUploadDate(file.getUploadDate());
+            dto.setUploaderId(file.getUploaderId());
+            dto.setUploaderUsername(file.getUploaderUsername());
+            dto.setDescription(file.getDescription());
+            dto.setDownloadUrl(minioService.getFileUrl(file.getStorageKey()));
             dto.setApplications(Collections.emptyList());
+
             return dto;
         }
+    }
+
+    // Вспомогательный класс для возврата файла с метаданными
+        public record InputStreamWithMetadata(InputStream inputStream, String filename, String contentType, Long size) {
     }
 }
