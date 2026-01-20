@@ -1,5 +1,6 @@
 package com.example.tagservice.application.service;
 
+import com.example.tagservice.application.exception.NotFoundException;
 import com.example.tagservice.domain.model.Tag;
 import com.example.tagservice.domain.port.inbound.GetTagUseCasePort;
 import com.example.tagservice.domain.port.outbound.TagRepositoryPort;
@@ -34,7 +35,7 @@ public class GetTagUseCase implements GetTagUseCasePort {
                 .orElseThrow(() -> {
                     String msg = "Tag not found: " + name;
                     log.warn(msg);
-                    return new RuntimeException(msg); // адаптируйте на ваше NotFoundException
+                    return new NotFoundException(msg);
                 });
     }
 }
