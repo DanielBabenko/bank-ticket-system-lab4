@@ -1,15 +1,15 @@
-package com.example.userservice.domain.repository;
+package com.example.userservice.infrastructure.persistence;
 
 import com.example.userservice.domain.model.entity.User;
+import org.springframework.data.r2dbc.repository.R2dbcRepository;
+import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Scanner;
 import java.util.UUID;
 
-public interface UserRepository {
+@Repository
+public interface UserR2dbcRepository extends R2dbcRepository<User, UUID> {
     Mono<Boolean> existsByUsername(String username);
     Mono<Boolean> existsByEmail(String email);
     Mono<User> findByUsername(String username);

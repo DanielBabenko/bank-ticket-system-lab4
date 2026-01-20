@@ -1,6 +1,6 @@
 package com.example.userservice.presentation.controller;
 
-import com.example.userservice.domain.dto.UserDto;
+import com.example.userservice.application.dto.UserDto;
 import com.example.userservice.application.usecases.*;
 import com.example.userservice.presentation.dto.UserRequest;
 import com.example.userservice.domain.model.enums.UserRole;

@@ -1,4 +1,4 @@
-package com.example.assignmentservice.domain.dto;
+package com.example.assignmentservice.application.dto;
 
 import com.example.assignmentservice.domain.model.enums.AssignmentRole;
 import jakarta.validation.constraints.NotNull;
