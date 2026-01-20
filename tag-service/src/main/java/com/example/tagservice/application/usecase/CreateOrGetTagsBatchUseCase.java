@@ -1,12 +1,10 @@
-package com.example.tagservice.application.service;
+package com.example.tagservice.application.usecase;
 
 import com.example.tagservice.domain.model.Tag;
 import com.example.tagservice.domain.port.outbound.TagRepositoryPort;
 import com.example.tagservice.domain.port.inbound.CreateOrGetTagsBatchUseCasePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -14,7 +12,6 @@ import java.util.stream.Collectors;
 /**
  * Реализация батчевого use-case для создания/получения тегов.
  */
-@Service
 public class CreateOrGetTagsBatchUseCase implements CreateOrGetTagsBatchUseCasePort {
 
     private static final Logger log = LoggerFactory.getLogger(CreateOrGetTagsBatchUseCase.class);
@@ -25,7 +22,6 @@ public class CreateOrGetTagsBatchUseCase implements CreateOrGetTagsBatchUseCaseP
     }
 
     @Override
-    @Transactional
     public List<Tag> createOrGetTags(List<String> tagNames) {
         if (tagNames == null || tagNames.isEmpty()) {
             return Collections.emptyList();

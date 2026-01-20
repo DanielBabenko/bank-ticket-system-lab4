@@ -1,9 +1,9 @@
 package com.example.tagservice.usecase;
 
-import com.example.tagservice.application.service.CreateOrGetTagsBatchUseCase;
-import com.example.tagservice.application.service.CreateTagUseCase;
-import com.example.tagservice.application.service.GetTagUseCase;
-import com.example.tagservice.application.service.ListTagsUseCase;
+import com.example.tagservice.application.usecase.CreateOrGetTagsBatchUseCase;
+import com.example.tagservice.application.usecase.CreateTagUseCase;
+import com.example.tagservice.application.usecase.GetTagUseCase;
+import com.example.tagservice.application.usecase.ListTagsUseCase;
 import com.example.tagservice.domain.model.Tag;
 import com.example.tagservice.domain.port.outbound.ApplicationServicePort;
 import com.example.tagservice.domain.port.outbound.TagRepositoryPort;
@@ -13,7 +13,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Instant;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
