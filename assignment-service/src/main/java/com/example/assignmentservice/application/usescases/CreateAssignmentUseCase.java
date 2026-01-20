@@ -5,12 +5,14 @@ import com.example.assignmentservice.domain.model.enums.AssignmentRole;
 import com.example.assignmentservice.domain.repository.UserProductAssignmentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
+@Service
 public class CreateAssignmentUseCase {
     private static final Logger logger = LoggerFactory.getLogger(CreateAssignmentUseCase.class);
 

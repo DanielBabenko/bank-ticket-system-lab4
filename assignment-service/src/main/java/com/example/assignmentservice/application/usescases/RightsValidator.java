@@ -8,9 +8,11 @@ import com.example.assignmentservice.domain.repository.UserProductAssignmentRepo
 import feign.FeignException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Service
 public class RightsValidator {
     private static final Logger logger = LoggerFactory.getLogger(RightsValidator.class);
 

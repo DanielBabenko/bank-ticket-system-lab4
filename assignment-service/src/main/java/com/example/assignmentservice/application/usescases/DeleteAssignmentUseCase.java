@@ -4,10 +4,12 @@ import com.example.assignmentservice.domain.exception.UnauthorizedException;
 import com.example.assignmentservice.domain.repository.UserProductAssignmentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Service
 public class DeleteAssignmentUseCase {
     private static final Logger logger = LoggerFactory.getLogger(DeleteAssignmentUseCase.class);
 

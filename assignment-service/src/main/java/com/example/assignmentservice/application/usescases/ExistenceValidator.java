@@ -8,10 +8,12 @@ import com.example.assignmentservice.domain.repository.UserProductAssignmentRepo
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Service
 public class ExistenceValidator {
     private static final Logger logger = LoggerFactory.getLogger(ExistenceValidator.class);
 
