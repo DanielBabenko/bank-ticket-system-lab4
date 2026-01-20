@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -31,7 +30,6 @@ public class CreateUserUseCase {
         this.toUserDto = toUserDto;
     }
 
-    @Transactional
     public Mono<UserDto> create(UserRequest req) {
         if (req == null) {
             throw new BadRequestException("Request is required");

@@ -9,7 +9,6 @@ import com.example.assignmentservice.domain.repository.UserProductAssignmentRepo
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -45,7 +44,6 @@ public class ExistenceValidator {
         checkProductExists(productId);
     }
 
-    @Transactional(readOnly = true)
     public boolean existsByUserAndProductAndRole(UUID userId, UUID productId, AssignmentRole role) {
         return repo.existsByUserIdAndProductIdAndRoleOnProduct(userId, productId, role);
     }
