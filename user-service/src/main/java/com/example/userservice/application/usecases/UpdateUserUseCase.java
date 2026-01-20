@@ -1,6 +1,6 @@
 package com.example.userservice.application.usecases;
 
-import com.example.userservice.application.dto.UserDto;
+import com.example.userservice.domain.dto.UserDto;
 import com.example.userservice.domain.exception.NotFoundException;
 import com.example.userservice.domain.model.enums.UserRole;
 import com.example.userservice.domain.repository.UserRepository;

@@ -1,12 +1,11 @@
 package com.example.userservice.application.usecases;
 
-import com.example.userservice.application.dto.UserDto;
+import com.example.userservice.domain.dto.UserDto;
 import com.example.userservice.domain.exception.BadRequestException;
 import com.example.userservice.domain.exception.NotFoundException;
 import com.example.userservice.domain.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -20,7 +19,7 @@ public class FindUsersUseCase {
     private final UserRepository userRepository;
     private final ToUserDto toUserDto;
 
-    public FindUsersUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder, ToUserDto toUserDto) {
+    public FindUsersUseCase(UserRepository userRepository, ToUserDto toUserDto) {
         this.userRepository = userRepository;
         this.toUserDto = toUserDto;
     }

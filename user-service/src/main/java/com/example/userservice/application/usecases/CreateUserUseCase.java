@@ -1,14 +1,12 @@
 package com.example.userservice.application.usecases;
 
-import com.example.userservice.application.dto.UserDto;
-import com.example.userservice.application.service.UserService;
+import com.example.userservice.domain.dto.UserDto;
 import com.example.userservice.domain.exception.BadRequestException;
 import com.example.userservice.domain.exception.ConflictException;
 import com.example.userservice.domain.model.entity.User;
 import com.example.userservice.domain.model.enums.UserRole;
 import com.example.userservice.domain.repository.UserRepository;
 import com.example.userservice.presentation.dto.UserRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;

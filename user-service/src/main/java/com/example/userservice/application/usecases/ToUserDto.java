@@ -1,6 +1,6 @@
 package com.example.userservice.application.usecases;
 
-import com.example.userservice.application.dto.UserDto;
+import com.example.userservice.domain.dto.UserDto;
 import com.example.userservice.domain.model.entity.User;
 import org.springframework.stereotype.Service;
 

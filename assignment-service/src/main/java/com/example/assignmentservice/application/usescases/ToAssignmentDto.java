@@ -1,6 +1,6 @@
 package com.example.assignmentservice.application.usescases;
 
-import com.example.assignmentservice.application.dto.UserProductAssignmentDto;
+import com.example.assignmentservice.domain.dto.UserProductAssignmentDto;
 import com.example.assignmentservice.domain.model.entity.UserProductAssignment;
 import org.springframework.stereotype.Service;
 
