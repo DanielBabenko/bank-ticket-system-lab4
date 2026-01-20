@@ -1,11 +1,11 @@
 package com.example.userservice.integration;
 
 import com.example.userservice.UserServiceApplication;
-import com.example.userservice.dto.UserDto;
-import com.example.userservice.dto.UserRequest;
-import com.example.userservice.model.entity.User;
-import com.example.userservice.model.enums.UserRole;
-import com.example.userservice.repository.UserRepository;
+import com.example.userservice.application.dto.UserDto;
+import com.example.userservice.presentation.dto.UserRequest;
+import com.example.userservice.domain.model.entity.User;
+import com.example.userservice.domain.model.enums.UserRole;
+import com.example.userservice.domain.repository.UserRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -27,7 +27,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderResult;
-import reactor.test.StepVerifier;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;

@@ -1,10 +1,13 @@
 package com.example.userservice.controller;
 
-import com.example.userservice.dto.UserDto;
-import com.example.userservice.dto.UserRequest;
-import com.example.userservice.exception.*;
-import com.example.userservice.model.enums.UserRole;
-import com.example.userservice.service.UserService;
+import com.example.userservice.domain.exception.ConflictException;
+import com.example.userservice.domain.exception.ForbiddenException;
+import com.example.userservice.domain.exception.NotFoundException;
+import com.example.userservice.application.dto.UserDto;
+import com.example.userservice.presentation.dto.UserRequest;
+import com.example.userservice.domain.model.enums.UserRole;
+import com.example.userservice.application.service.UserService;
+import com.example.userservice.presentation.controller.UserController;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

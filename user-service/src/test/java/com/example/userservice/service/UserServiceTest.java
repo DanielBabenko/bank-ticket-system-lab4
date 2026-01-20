@@ -1,11 +1,11 @@
 package com.example.userservice.service;
 
-import com.example.userservice.dto.UserDto;
-import com.example.userservice.dto.UserRequest;
-import com.example.userservice.exception.*;
-import com.example.userservice.model.entity.User;
-import com.example.userservice.model.enums.UserRole;
-import com.example.userservice.repository.UserRepository;
+import com.example.userservice.application.service.UserService;
+import com.example.userservice.domain.exception.*;
+import com.example.userservice.presentation.dto.UserRequest;
+import com.example.userservice.domain.model.entity.User;
+import com.example.userservice.domain.model.enums.UserRole;
+import com.example.userservice.domain.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,7 +19,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.kafka.sender.KafkaSender;
-import reactor.kafka.sender.SenderRecord;
 import reactor.kafka.sender.SenderResult;
 import reactor.test.StepVerifier;
 
