@@ -1,0 +1,7 @@
+spring:
+  profiles:
+    active: dev
+  config:
+    import: ${SPRING_CONFIG_IMPORT:optional:configserver:http://localhost:8888}
+  application:
+    name: file-service

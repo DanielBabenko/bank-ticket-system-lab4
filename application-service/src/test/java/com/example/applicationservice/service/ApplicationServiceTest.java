@@ -1,6 +1,7 @@
 package com.example.applicationservice.service;
 
 import com.example.applicationservice.dto.*;
+import com.example.applicationservice.event.FileEvent;
 import com.example.applicationservice.event.TagEvent;
 import com.example.applicationservice.exception.*;
 import com.example.applicationservice.feign.*;
@@ -8,7 +9,6 @@ import com.example.applicationservice.model.entity.*;
 import com.example.applicationservice.model.enums.ApplicationStatus;
 import com.example.applicationservice.model.enums.UserRole;
 import com.example.applicationservice.repository.*;
-import com.example.applicationservice.util.ApplicationPage;
 import com.example.applicationservice.util.CursorUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
@@ -17,14 +17,12 @@ import org.springframework.data.domain.*;
 import org.springframework.test.util.ReflectionTestUtils;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Schedulers;
 import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderResult;
 import reactor.test.StepVerifier;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.Callable;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -39,13 +37,13 @@ public class ApplicationServiceTest {
     private ApplicationHistoryRepository applicationHistoryRepository;
 
     @Mock
-    private DocumentRepository documentRepository;
-
-    @Mock
     private UserServiceClient userServiceClient;
 
     @Mock
     private ProductServiceClient productServiceClient;
+
+    @Mock
+    private FileServiceClient fileServiceClient;
 
     @Mock
     private KafkaSender<String, String> kafkaSender;
@@ -62,6 +60,7 @@ public class ApplicationServiceTest {
         // Устанавливаем значения полей через Reflection
         ReflectionTestUtils.setField(applicationService, "tagCreateRequestTopic", "tag.create.request");
         ReflectionTestUtils.setField(applicationService, "tagAttachRequestTopic", "tag.attach.request");
+        ReflectionTestUtils.setField(applicationService, "fileAttachRequestTopic", "file.attach.request");
     }
 
     // -----------------------
@@ -175,16 +174,12 @@ public class ApplicationServiceTest {
         String actorRoleClaim = "ROLE_CLIENT";
         UUID aid = actorId; // Same as actor
         UUID pid = UUID.randomUUID();
+        UUID fileId = UUID.randomUUID();
         ApplicationRequest req = new ApplicationRequest();
         req.setApplicantId(aid);
         req.setProductId(pid);
         req.setTags(List.of("t1", "t2"));
-
-        DocumentRequest d = new DocumentRequest();
-        d.setFileName("f.txt");
-        d.setContentType("text/plain");
-        d.setStoragePath("/tmp/f");
-        req.setDocuments(List.of(d));
+        req.setFiles(List.of(fileId));
 
         when(userServiceClient.userExists(aid)).thenReturn(true);
         when(productServiceClient.productExists(pid)).thenReturn(true);
@@ -193,8 +188,9 @@ public class ApplicationServiceTest {
         when(applicationRepository.save(any(Application.class))).thenAnswer(inv -> inv.getArgument(0));
         when(applicationHistoryRepository.save(any(ApplicationHistory.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        // Мокируем ObjectMapper для сериализации TagEvent
+        // Мокируем ObjectMapper для сериализации TagEvent и FileEvent
         when(objectMapper.writeValueAsString(any(TagEvent.class))).thenReturn("{}");
+        when(objectMapper.writeValueAsString(any(FileEvent.class))).thenReturn("{}");
 
         // Мокируем Kafka отправку
         SenderResult<String> mockResult = mock(SenderResult.class);
@@ -209,7 +205,7 @@ public class ApplicationServiceTest {
                     assertEquals(aid, dto.getApplicantId());
                     assertEquals(pid, dto.getProductId());
                     assertEquals(ApplicationStatus.SUBMITTED, dto.getStatus());
-                    assertEquals(1, dto.getDocuments().size());
+                    assertEquals(1, dto.getFiles().size());
                 })
                 .verifyComplete();
 
@@ -218,7 +214,7 @@ public class ApplicationServiceTest {
         verify(applicationHistoryRepository, times(1)).save(any(ApplicationHistory.class));
         verify(userServiceClient, times(1)).userExists(aid);
         verify(productServiceClient, times(1)).productExists(pid);
-        verify(kafkaSender, times(1)).send(any(Mono.class));
+        verify(kafkaSender, times(2)).send(any(Mono.class)); // Для тегов и файлов
     }
 
     // -----------------------
@@ -234,21 +230,32 @@ public class ApplicationServiceTest {
     @Test
     public void findAll_returnsPagedDtos() {
         // Setup
+        UUID appId1 = UUID.randomUUID();
+        UUID appId2 = UUID.randomUUID();
+
         Application app1 = new Application();
-        app1.setId(UUID.randomUUID());
+        app1.setId(appId1);
         app1.setStatus(ApplicationStatus.SUBMITTED);
         app1.setCreatedAt(Instant.now());
+        app1.setFiles(new HashSet<>(List.of(UUID.randomUUID())));
 
         Application app2 = new Application();
-        app2.setId(UUID.randomUUID());
+        app2.setId(appId2);
         app2.setStatus(ApplicationStatus.DRAFT);
         app2.setCreatedAt(Instant.now());
+        app2.setFiles(new HashSet<>(List.of(UUID.randomUUID())));
 
         Page<Application> page = new PageImpl<>(List.of(app1, app2));
-        when(applicationRepository.findAllWithDocuments(any(Pageable.class))).thenReturn(page);
+        when(applicationRepository.findAll(any(Pageable.class))).thenReturn(page);
 
-        List<UUID> appIds = List.of(app1.getId(), app2.getId());
+        List<UUID> appIds = List.of(appId1, appId2);
         when(applicationRepository.findByIdsWithTags(appIds)).thenReturn(List.of(app1, app2));
+        when(applicationRepository.findByIdsWithFiles(appIds)).thenReturn(List.of(app1, app2));
+
+        // Mock file existence check
+        when(fileServiceClient.checkFilesExist(anyList())).thenReturn(
+                app1.getFiles().stream().toList() // Return all files as existing
+        );
 
         // Test
         StepVerifier.create(applicationService.findAll(0, 10))
@@ -262,7 +269,7 @@ public class ApplicationServiceTest {
     @Test
     public void findById_whenNotFound_throwsNotFoundException() {
         UUID id = UUID.randomUUID();
-        when(applicationRepository.findByIdWithDocuments(id)).thenReturn(Optional.empty());
+        when(applicationRepository.findByIdWithFiles(id)).thenReturn(Optional.empty());
 
         StepVerifier.create(applicationService.findById(id))
                 .expectError(NotFoundException.class)
@@ -272,18 +279,24 @@ public class ApplicationServiceTest {
     @Test
     public void findById_whenFound_returnsDto() {
         UUID id = UUID.randomUUID();
+        UUID fileId = UUID.randomUUID();
         Application app = new Application();
         app.setId(id);
         app.setStatus(ApplicationStatus.DRAFT);
         app.setCreatedAt(Instant.now());
+        app.setFiles(new HashSet<>(List.of(fileId)));
 
-        when(applicationRepository.findByIdWithDocuments(id)).thenReturn(Optional.of(app));
+        when(applicationRepository.findByIdWithFiles(id)).thenReturn(Optional.of(app));
         when(applicationRepository.findByIdWithTags(id)).thenReturn(Optional.of(app));
+
+        // Mock file existence check
+        when(fileServiceClient.checkFilesExist(List.of(fileId))).thenReturn(List.of(fileId));
 
         StepVerifier.create(applicationService.findById(id))
                 .assertNext(dto -> {
                     assertNotNull(dto);
                     assertEquals(id, dto.getId());
+                    assertEquals(1, dto.getFiles().size());
                 })
                 .verifyComplete();
     }
@@ -302,6 +315,8 @@ public class ApplicationServiceTest {
     public void streamWithNextCursor_callsFirstPageRepository_whenCursorIsNull() {
         UUID appId1 = UUID.randomUUID();
         UUID appId2 = UUID.randomUUID();
+        UUID fileId1 = UUID.randomUUID();
+        UUID fileId2 = UUID.randomUUID();
         Instant timestamp1 = Instant.parse("2024-01-01T00:00:00Z");
         Instant timestamp2 = Instant.parse("2024-01-01T00:00:10Z");
 
@@ -311,12 +326,18 @@ public class ApplicationServiceTest {
         Application app1 = new Application();
         app1.setId(appId1);
         app1.setCreatedAt(timestamp1);
+        app1.setFiles(new HashSet<>(List.of(fileId1)));
+
         Application app2 = new Application();
         app2.setId(appId2);
         app2.setCreatedAt(timestamp2);
+        app2.setFiles(new HashSet<>(List.of(fileId2)));
 
-        when(applicationRepository.findByIdsWithDocuments(appIds)).thenReturn(List.of(app1, app2));
+        when(applicationRepository.findByIdsWithFiles(appIds)).thenReturn(List.of(app1, app2));
         when(applicationRepository.findByIdsWithTags(appIds)).thenReturn(List.of(app1, app2));
+
+        // Mock file existence check
+        when(fileServiceClient.checkFilesExist(List.of(fileId1, fileId2))).thenReturn(List.of(fileId1, fileId2));
 
         StepVerifier.create(applicationService.streamWithNextCursor(null, 5))
                 .assertNext(page -> {
@@ -334,17 +355,22 @@ public class ApplicationServiceTest {
         Instant timestamp = Instant.parse("2024-01-01T00:00:05Z");
         UUID cursorId = UUID.randomUUID();
         String cursor = CursorUtil.encode(timestamp, cursorId);
-
         UUID appId = UUID.randomUUID();
+        UUID fileId = UUID.randomUUID();
+
         List<UUID> appIds = List.of(appId);
         when(applicationRepository.findIdsByKeyset(timestamp, cursorId, 5)).thenReturn(appIds);
 
         Application app = new Application();
         app.setId(appId);
         app.setCreatedAt(Instant.parse("2024-01-01T00:00:04Z"));
+        app.setFiles(new HashSet<>(List.of(fileId)));
 
-        when(applicationRepository.findByIdsWithDocuments(appIds)).thenReturn(List.of(app));
+        when(applicationRepository.findByIdsWithFiles(appIds)).thenReturn(List.of(app));
         when(applicationRepository.findByIdsWithTags(appIds)).thenReturn(List.of(app));
+
+        // Mock file existence check
+        when(fileServiceClient.checkFilesExist(List.of(fileId))).thenReturn(List.of(fileId));
 
         StepVerifier.create(applicationService.streamWithNextCursor(cursor, 5))
                 .assertNext(page -> {
@@ -371,7 +397,7 @@ public class ApplicationServiceTest {
         app.setId(applicationId);
         app.setApplicantId(UUID.randomUUID());
 
-        when(applicationRepository.findByIdWithDocuments(any(UUID.class)))
+        when(applicationRepository.findByIdWithFiles(any(UUID.class)))
                 .thenReturn(Optional.of(app));
         when(applicationRepository.findByIdWithTags(applicationId)).thenReturn(Optional.empty());
 
@@ -393,7 +419,7 @@ public class ApplicationServiceTest {
         app.setApplicantId(differentApplicantId);
         app.setTags(new HashSet<>());
 
-        when(applicationRepository.findByIdWithDocuments(applicationId))
+        when(applicationRepository.findByIdWithFiles(applicationId))
                 .thenReturn(Optional.of(app));
         when(applicationRepository.findByIdWithTags(applicationId))
                 .thenReturn(Optional.of(app));
@@ -417,7 +443,7 @@ public class ApplicationServiceTest {
         app.setTags(new HashSet<>());
 
         // Мокаем успешную валидацию
-        when(applicationRepository.findByIdWithDocuments(applicationId))
+        when(applicationRepository.findByIdWithFiles(applicationId))
                 .thenReturn(Optional.of(app));
         when(applicationRepository.findByIdWithTags(applicationId)).thenReturn(Optional.of(app));
 
@@ -452,7 +478,7 @@ public class ApplicationServiceTest {
         app.setTags(new HashSet<>());
 
         // Мокаем успешную валидацию
-        when(applicationRepository.findByIdWithDocuments(applicationId))
+        when(applicationRepository.findByIdWithFiles(applicationId))
                 .thenReturn(Optional.of(app));
         when(applicationRepository.findByIdWithTags(applicationId)).thenReturn(Optional.of(app));
 
@@ -470,6 +496,68 @@ public class ApplicationServiceTest {
                 .verifyComplete();
 
         assertTrue(app.getTags().contains("tag1"));
+        verify(applicationRepository, times(1)).save(app);
+        verify(kafkaSender, times(1)).send(any(Mono.class));
+    }
+
+    // -----------------------
+    // attachFiles tests
+    // -----------------------
+    @Test
+    public void attachFiles_notAllowed_throwsForbidden() {
+        UUID applicationId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        String actorRoleClaim = "ROLE_CLIENT";
+        List<UUID> fileIds = List.of(UUID.randomUUID());
+
+        Application app = new Application();
+        app.setId(applicationId);
+        UUID differentApplicantId = UUID.randomUUID();
+        app.setApplicantId(differentApplicantId);
+        app.setFiles(new HashSet<>());
+
+        when(applicationRepository.findByIdWithFiles(applicationId))
+                .thenReturn(Optional.of(app));
+        when(applicationRepository.findByIdWithTags(applicationId))
+                .thenReturn(Optional.of(app));
+
+        StepVerifier.create(applicationService.attachFiles(applicationId, fileIds, actorId, actorRoleClaim))
+                .expectError(ForbiddenException.class)
+                .verify();
+    }
+
+    @Test
+    public void attachFiles_success_attachesFiles() throws Exception {
+        UUID applicationId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        String actorRoleClaim = "ROLE_CLIENT";
+        UUID fileId = UUID.randomUUID();
+        List<UUID> fileIds = List.of(fileId);
+
+        Application app = new Application();
+        app.setId(applicationId);
+        app.setApplicantId(actorId); // Same as actorId
+        app.setFiles(new HashSet<>());
+
+        // Мокаем успешную валидацию
+        when(applicationRepository.findByIdWithFiles(applicationId))
+                .thenReturn(Optional.of(app));
+        when(applicationRepository.findByIdWithTags(applicationId)).thenReturn(Optional.of(app));
+
+        // Мокируем ObjectMapper для сериализации FileEvent
+        when(objectMapper.writeValueAsString(any(FileEvent.class))).thenReturn("{}");
+
+        // Мокируем Kafka отправку
+        SenderResult<String> mockResult = mock(SenderResult.class);
+        when(mockResult.exception()).thenReturn(null);
+        when(kafkaSender.send(any(Mono.class))).thenReturn(Flux.just(mockResult));
+
+        when(applicationRepository.save(app)).thenReturn(app);
+
+        StepVerifier.create(applicationService.attachFiles(applicationId, fileIds, actorId, actorRoleClaim))
+                .verifyComplete();
+
+        assertTrue(app.getFiles().contains(fileId));
         verify(applicationRepository, times(1)).save(app);
         verify(kafkaSender, times(1)).send(any(Mono.class));
     }
@@ -504,7 +592,7 @@ public class ApplicationServiceTest {
         app.setTags(new HashSet<>(Set.of("tag1", "tag2")));
 
         // Мокаем успешную валидацию
-        when(applicationRepository.findByIdWithDocuments(applicationId))
+        when(applicationRepository.findByIdWithFiles(applicationId))
                 .thenReturn(Optional.of(app));
         when(applicationRepository.findByIdWithTags(applicationId)).thenReturn(Optional.of(app));
         when(applicationRepository.save(app)).thenReturn(app);
@@ -514,6 +602,36 @@ public class ApplicationServiceTest {
 
         assertFalse(app.getTags().contains("tag1"));
         assertTrue(app.getTags().contains("tag2"));
+        verify(applicationRepository, times(1)).save(app);
+    }
+
+    // -----------------------
+    // removeFiles tests
+    // -----------------------
+    @Test
+    public void removeFiles_success_removesFilesAndSaves() {
+        UUID applicationId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        String actorRoleClaim = "ROLE_CLIENT";
+        UUID fileId1 = UUID.randomUUID();
+        UUID fileId2 = UUID.randomUUID();
+        List<UUID> filesToRemove = List.of(fileId1);
+
+        Application app = new Application();
+        app.setId(applicationId);
+        app.setApplicantId(actorId);
+        app.setFiles(new HashSet<>(Set.of(fileId1, fileId2)));
+
+        // Мокаем успешную валидацию
+        when(applicationRepository.findByIdWithFiles(applicationId))
+                .thenReturn(Optional.of(app));
+        when(applicationRepository.findByIdWithTags(applicationId)).thenReturn(Optional.of(app));
+        when(applicationRepository.save(app)).thenReturn(app);
+
+        StepVerifier.create(applicationService.removeFiles(applicationId, filesToRemove, actorId, actorRoleClaim))
+                .verifyComplete();
+
+        assertFalse(app.getFiles().contains(fileId1));
         verify(applicationRepository, times(1)).save(app);
     }
 
@@ -615,7 +733,7 @@ public class ApplicationServiceTest {
         app.setStatus(ApplicationStatus.SUBMITTED);
 
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(app));
-        when(applicationRepository.findByIdWithDocuments(applicationId)).thenReturn(Optional.of(app));
+        when(applicationRepository.findByIdWithFiles(applicationId)).thenReturn(Optional.of(app));
         when(applicationRepository.findByIdWithTags(applicationId)).thenReturn(Optional.of(app));
         when(applicationRepository.save(any(Application.class))).thenAnswer(inv -> inv.getArgument(0));
         when(applicationHistoryRepository.save(any(ApplicationHistory.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -644,7 +762,7 @@ public class ApplicationServiceTest {
         app.setStatus(ApplicationStatus.SUBMITTED);
 
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(app));
-        when(applicationRepository.findByIdWithDocuments(applicationId)).thenReturn(Optional.of(app));
+        when(applicationRepository.findByIdWithFiles(applicationId)).thenReturn(Optional.of(app));
         when(applicationRepository.findByIdWithTags(applicationId)).thenReturn(Optional.of(app));
         when(applicationRepository.save(any(Application.class))).thenAnswer(inv -> inv.getArgument(0));
         when(applicationHistoryRepository.save(any(ApplicationHistory.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -680,7 +798,7 @@ public class ApplicationServiceTest {
         UUID actorId = UUID.randomUUID();
         String actorRoleClaim = "ROLE_ADMIN";
 
-        doNothing().when(documentRepository).deleteByApplicationId(applicationId);
+        doNothing().when(applicationRepository).deleteFilesByApplicationId(applicationId);
         doNothing().when(applicationHistoryRepository).deleteByApplicationId(applicationId);
         doNothing().when(applicationRepository).deleteTagsByApplicationId(applicationId);
         doNothing().when(applicationRepository).deleteById(applicationId);
@@ -688,7 +806,7 @@ public class ApplicationServiceTest {
         StepVerifier.create(applicationService.deleteApplication(applicationId, actorId, actorRoleClaim))
                 .verifyComplete();
 
-        verify(documentRepository, times(1)).deleteByApplicationId(applicationId);
+        verify(applicationRepository, times(1)).deleteFilesByApplicationId(applicationId);
         verify(applicationHistoryRepository, times(1)).deleteByApplicationId(applicationId);
         verify(applicationRepository, times(1)).deleteTagsByApplicationId(applicationId);
         verify(applicationRepository, times(1)).deleteById(applicationId);
@@ -707,7 +825,7 @@ public class ApplicationServiceTest {
         app.setId(applicationId);
         app.setApplicantId(UUID.randomUUID()); // Different from actor
 
-        when(applicationRepository.findByIdWithDocuments(applicationId)).thenReturn(Optional.of(app));
+        when(applicationRepository.findByIdWithFiles(applicationId)).thenReturn(Optional.of(app));
 
         StepVerifier.create(applicationService.listHistory(applicationId, actorId, actorRoleClaim))
                 .expectError(ForbiddenException.class)
@@ -732,7 +850,7 @@ public class ApplicationServiceTest {
         h1.setChangedBy(UserRole.ROLE_CLIENT);
         h1.setChangedAt(Instant.now());
 
-        when(applicationRepository.findByIdWithDocuments(applicationId)).thenReturn(Optional.of(app));
+        when(applicationRepository.findByIdWithFiles(applicationId)).thenReturn(Optional.of(app));
         when(applicationHistoryRepository.findByApplicationIdOrderByChangedAtDesc(applicationId))
                 .thenReturn(List.of(h1));
 
@@ -759,7 +877,7 @@ public class ApplicationServiceTest {
         h1.setChangedBy(UserRole.ROLE_CLIENT);
         h1.setChangedAt(Instant.now());
 
-        when(applicationRepository.findByIdWithDocuments(applicationId)).thenReturn(Optional.of(app));
+        when(applicationRepository.findByIdWithFiles(applicationId)).thenReturn(Optional.of(app));
         when(applicationHistoryRepository.findByApplicationIdOrderByChangedAtDesc(applicationId))
                 .thenReturn(List.of(h1));
 
@@ -777,7 +895,7 @@ public class ApplicationServiceTest {
         UUID appId = UUID.randomUUID();
 
         when(applicationRepository.findIdsByApplicantId(userId)).thenReturn(List.of(appId));
-        doNothing().when(documentRepository).deleteByApplicationId(appId);
+        doNothing().when(applicationRepository).deleteFilesByApplicationId(appId);
         doNothing().when(applicationHistoryRepository).deleteByApplicationId(appId);
         doNothing().when(applicationRepository).deleteTagsByApplicationId(appId);
         doNothing().when(applicationRepository).deleteById(appId);
@@ -785,7 +903,7 @@ public class ApplicationServiceTest {
         StepVerifier.create(applicationService.deleteApplicationsByUserId(userId))
                 .verifyComplete();
 
-        verify(documentRepository, times(1)).deleteByApplicationId(appId);
+        verify(applicationRepository, times(1)).deleteFilesByApplicationId(appId);
         verify(applicationHistoryRepository, times(1)).deleteByApplicationId(appId);
         verify(applicationRepository, times(1)).deleteTagsByApplicationId(appId);
         verify(applicationRepository, times(1)).deleteById(appId);
@@ -800,7 +918,7 @@ public class ApplicationServiceTest {
         UUID appId = UUID.randomUUID();
 
         when(applicationRepository.findIdsByProductId(productId)).thenReturn(List.of(appId));
-        doNothing().when(documentRepository).deleteByApplicationId(appId);
+        doNothing().when(applicationRepository).deleteFilesByApplicationId(appId);
         doNothing().when(applicationHistoryRepository).deleteByApplicationId(appId);
         doNothing().when(applicationRepository).deleteTagsByApplicationId(appId);
         doNothing().when(applicationRepository).deleteById(appId);
@@ -808,7 +926,7 @@ public class ApplicationServiceTest {
         StepVerifier.create(applicationService.deleteApplicationsByProductId(productId))
                 .verifyComplete();
 
-        verify(documentRepository, times(1)).deleteByApplicationId(appId);
+        verify(applicationRepository, times(1)).deleteFilesByApplicationId(appId);
         verify(applicationHistoryRepository, times(1)).deleteByApplicationId(appId);
         verify(applicationRepository, times(1)).deleteTagsByApplicationId(appId);
         verify(applicationRepository, times(1)).deleteById(appId);
@@ -830,6 +948,29 @@ public class ApplicationServiceTest {
         when(applicationRepository.findByTag(tagName)).thenReturn(List.of(app));
 
         StepVerifier.create(applicationService.findApplicationsByTag(tagName))
+                .assertNext(list -> {
+                    assertEquals(1, list.size());
+                    assertEquals(app.getId(), list.get(0).getId());
+                })
+                .verifyComplete();
+    }
+
+    // -----------------------
+    // findApplicationsByFile tests
+    // -----------------------
+    @Test
+    public void findApplicationsByFile_success_returnsApplicationInfoDtos() {
+        UUID fileId = UUID.randomUUID();
+        Application app = new Application();
+        app.setId(UUID.randomUUID());
+        app.setApplicantId(UUID.randomUUID());
+        app.setProductId(UUID.randomUUID());
+        app.setStatus(ApplicationStatus.SUBMITTED);
+        app.setCreatedAt(Instant.now());
+
+        when(applicationRepository.findByFile(fileId)).thenReturn(List.of(app));
+
+        StepVerifier.create(applicationService.findApplicationsByFile(fileId))
                 .assertNext(list -> {
                     assertEquals(1, list.size());
                     assertEquals(app.getId(), list.get(0).getId());

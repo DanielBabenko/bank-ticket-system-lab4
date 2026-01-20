@@ -12,7 +12,7 @@ public class ApplicationDto {
     private UUID productId;
     private ApplicationStatus status;
     private Instant createdAt;
-    private List<DocumentDto> documents;
+    private List<UUID> files;
     private List<String> tags;
 
     public UUID getId() { return id; }
@@ -30,8 +30,8 @@ public class ApplicationDto {
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
-    public List<DocumentDto> getDocuments() { return documents; }
-    public void setDocuments(List<DocumentDto> documents) { this.documents = documents; }
+    public List<UUID> getFiles() { return files; }
+    public void setFiles(List<UUID> files) { this.files = files; }
 
     public List<String> getTags() { return tags; }
     public void setTags(List<String> tags) { this.tags = tags; }
