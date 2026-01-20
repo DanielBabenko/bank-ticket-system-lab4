@@ -29,11 +29,11 @@ public class UserProductAssignmentController {
     private final CreateAssignmentUseCase createUseCase;
     private final GetAssignmentsUseCase getUseCase;
     private final DeleteAssignmentUseCase deleteUseCase;
-    private final CheckExistence checkExistence;
+    private final ExistenceValidator checkExistence;
     private final ToAssignmentDto toDto;
 
     public UserProductAssignmentController(CreateAssignmentUseCase createUseCase, GetAssignmentsUseCase getUseCase, DeleteAssignmentUseCase deleteUseCase,
-                                           CheckExistence checkExistence, ToAssignmentDto toDto) {
+                                           ExistenceValidator checkExistence, ToAssignmentDto toDto) {
         this.createUseCase = createUseCase;
         this.getUseCase = getUseCase;
         this.deleteUseCase = deleteUseCase;

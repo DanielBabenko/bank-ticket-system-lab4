@@ -3,8 +3,6 @@ package com.example.assignmentservice.application.usescases;
 import com.example.assignmentservice.application.dto.UserProductAssignmentDto;
 import com.example.assignmentservice.domain.model.entity.UserProductAssignment;
 import com.example.assignmentservice.domain.repository.UserProductAssignmentRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -12,8 +10,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class GetAssignmentsUseCase {
-    private static final Logger logger = LoggerFactory.getLogger(GetAssignmentsUseCase.class);
-
     private final UserProductAssignmentRepository repo;
     private final ToAssignmentDto toDto;
 

@@ -1,4 +1,4 @@
-package com.example.assignmentservice.infrastructure.feign;
+package com.example.assignmentservice.infrastructure.client.feign;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -11,12 +11,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 
-public class CheckRights {
-    private static final Logger logger = LoggerFactory.getLogger(CheckRights.class);
+public class RightsValidator {
+    private static final Logger logger = LoggerFactory.getLogger(RightsValidator.class);
 
     private final UserProductAssignmentRepository repo;
 
-    public CheckRights(
+    public RightsValidator(
             UserProductAssignmentRepository repo) {
         this.repo = repo;
     }

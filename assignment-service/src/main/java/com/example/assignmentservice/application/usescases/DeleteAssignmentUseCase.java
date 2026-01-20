@@ -12,11 +12,11 @@ public class DeleteAssignmentUseCase {
     private static final Logger logger = LoggerFactory.getLogger(DeleteAssignmentUseCase.class);
 
     private final UserProductAssignmentRepository repo;
-    private final CheckExistence checkExistence;
-    private final CheckRights checkRights;
+    private final ExistenceValidator checkExistence;
+    private final RightsValidator checkRights;
 
     public DeleteAssignmentUseCase(
-            UserProductAssignmentRepository repo, CheckExistence checkExistence, CheckRights checkRights) {
+            UserProductAssignmentRepository repo, ExistenceValidator checkExistence, RightsValidator checkRights) {
         this.repo = repo;
         this.checkExistence = checkExistence;
         this.checkRights = checkRights;

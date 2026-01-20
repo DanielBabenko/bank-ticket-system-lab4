@@ -1,4 +1,4 @@
-package com.example.assignmentservice.infrastructure.feign;
+package com.example.assignmentservice.infrastructure.client.feign;
 
 import com.example.assignmentservice.domain.exception.ServiceUnavailableException;
 import org.springframework.cloud.openfeign.FallbackFactory;
