@@ -4,7 +4,6 @@ import com.example.assignmentservice.application.dto.UserProductAssignmentDto;
 import com.example.assignmentservice.domain.model.entity.UserProductAssignment;
 import com.example.assignmentservice.domain.repository.UserProductAssignmentRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -21,7 +20,6 @@ public class GetAssignmentsUseCase {
         this.toDto = toDto;
     }
 
-    @Transactional(readOnly = true)
     public List<UserProductAssignmentDto> list(UUID userId, UUID productId) {
         List<UserProductAssignment> assignments;
 

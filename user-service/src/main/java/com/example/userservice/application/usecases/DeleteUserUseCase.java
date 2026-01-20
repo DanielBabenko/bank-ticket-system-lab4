@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderRecord;
@@ -30,7 +29,6 @@ public class DeleteUserUseCase {
         this.validator = validator;
     }
 
-    @Transactional
     public Mono<Void> delete(UUID userId) {
         return validator.validateAdmin()
                 .then(userRepository.findById(userId))

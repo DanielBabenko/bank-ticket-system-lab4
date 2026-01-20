@@ -6,7 +6,6 @@ import com.example.assignmentservice.domain.repository.UserProductAssignmentRepo
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -27,7 +26,6 @@ public class CreateAssignmentUseCase {
         this.checkRights = checkRights;
     }
 
-    @Transactional
     public UserProductAssignment assign(UUID actorId, String actorRoleClaim, UUID userId, UUID productId, AssignmentRole role) {
         logger.info("Creating assignment: user={}, product={}, role={}, actor={} (actorRole={})",
                 userId, productId, role, actorId, actorRoleClaim);

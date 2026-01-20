@@ -5,7 +5,6 @@ import com.example.assignmentservice.domain.repository.UserProductAssignmentRepo
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -24,7 +23,6 @@ public class DeleteAssignmentUseCase {
         this.checkRights = checkRights;
     }
 
-    @Transactional
     public void deleteAssignments(UUID actorId, String actorRoleClaim, UUID userId, UUID productId) {
         logger.info("Deleting assignments: actor={}, actorRole={}, user={}, product={}",
                 actorId, actorRoleClaim, userId, productId);
@@ -56,12 +54,10 @@ public class DeleteAssignmentUseCase {
         }
     }
 
-    @Transactional
     public void deleteByProductId(UUID productId) {
         repo.deleteByProductId(productId);
     }
 
-    @Transactional
     public void deleteByUserId(UUID userId) {
         repo.deleteByUserId(userId);
     }
