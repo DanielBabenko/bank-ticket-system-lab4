@@ -22,7 +22,7 @@ public class AdminRoleValidator {
         this.userRepository = userRepository;
     }
 
-    protected Mono<User> validateAdmin() {
+    public Mono<User> validateAdmin() {
         return ReactiveSecurityContextHolder.getContext()
                 .switchIfEmpty(Mono.error(new UnauthorizedException("Unauthorized")))
                 .flatMap(ctx -> {
