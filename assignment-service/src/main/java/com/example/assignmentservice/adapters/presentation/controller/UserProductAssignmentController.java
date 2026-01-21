@@ -4,7 +4,11 @@ import com.example.assignmentservice.application.dto.UserProductAssignmentDto;
 import com.example.assignmentservice.application.mapper.AssignmentMapper;
 import com.example.assignmentservice.application.usescases.*;
 import com.example.assignmentservice.adapters.presentation.dto.UserProductAssignmentRequest;
+import com.example.assignmentservice.application.validator.ExistenceValidator;
 import com.example.assignmentservice.domain.model.enums.AssignmentRole;
+import com.example.assignmentservice.domain.ports.CreateAssignmentUseCasePort;
+import com.example.assignmentservice.domain.ports.DeleteAssignmentUseCasePort;
+import com.example.assignmentservice.domain.ports.GetAssignmentsUseCasePort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,17 +31,16 @@ public class UserProductAssignmentController {
 
     private static final Logger logger = LoggerFactory.getLogger(UserProductAssignmentController.class);
 
-    private final CreateAssignmentUseCase createUseCase;
-    private final GetAssignmentsUseCase getUseCase;
-    private final DeleteAssignmentUseCase deleteUseCase;
+    private final CreateAssignmentUseCasePort createUseCasePort;
+    private final GetAssignmentsUseCasePort getUseCasePort;
+    private final DeleteAssignmentUseCasePort deleteUseCasePort;
     private final ExistenceValidator checkExistence;
     private final AssignmentMapper toDto;
 
-    public UserProductAssignmentController(CreateAssignmentUseCase createUseCase, GetAssignmentsUseCase getUseCase, DeleteAssignmentUseCase deleteUseCase,
-                                           ExistenceValidator checkExistence, AssignmentMapper toDto) {
-        this.createUseCase = createUseCase;
-        this.getUseCase = getUseCase;
-        this.deleteUseCase = deleteUseCase;
+    public UserProductAssignmentController(CreateAssignmentUseCasePort createUseCasePort, GetAssignmentsUseCasePort getUseCasePort, DeleteAssignmentUseCasePort deleteUseCasePort, ExistenceValidator checkExistence, AssignmentMapper toDto) {
+        this.createUseCasePort = createUseCasePort;
+        this.getUseCasePort = getUseCasePort;
+        this.deleteUseCasePort = deleteUseCasePort;
         this.checkExistence = checkExistence;
         this.toDto = toDto;
     }
@@ -65,7 +68,7 @@ public class UserProductAssignmentController {
         UUID actorId = UUID.fromString(uid);
         String actorRole = jwt.getClaimAsString("role"); // may be null; service will fallback if necessary
 
-        var assignment = createUseCase.assign(actorId, actorRole, req.getUserId(), req.getProductId(), req.getRole());
+        var assignment = createUseCasePort.assign(actorId, actorRole, req.getUserId(), req.getProductId(), req.getRole());
         UserProductAssignmentDto dto = toDto.toDto(assignment);
 
         URI location = uriBuilder.path("/api/v1/assignments/{id}")
@@ -85,7 +88,7 @@ public class UserProductAssignmentController {
             @RequestParam(required = false) UUID userId,
             @RequestParam(required = false) UUID productId) {
 
-        List<UserProductAssignmentDto> list = getUseCase.list(userId, productId);
+        List<UserProductAssignmentDto> list = getUseCasePort.list(userId, productId);
         return ResponseEntity.ok(list);
     }
 
@@ -135,7 +138,7 @@ public class UserProductAssignmentController {
         UUID actorId = UUID.fromString(uid);
         String actorRole = jwt.getClaimAsString("role");
 
-        deleteUseCase.deleteAssignments(actorId, actorRole, userId, productId);
+        deleteUseCasePort.deleteAssignments(actorId, actorRole, userId, productId);
         return ResponseEntity.noContent().build();
     }
 }

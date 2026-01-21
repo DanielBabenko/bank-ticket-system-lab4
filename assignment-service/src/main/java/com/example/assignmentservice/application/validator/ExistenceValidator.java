@@ -1,4 +1,4 @@
-package com.example.assignmentservice.application.usescases;
+package com.example.assignmentservice.application.validator;
 
 import com.example.assignmentservice.application.ports.ProductExistencePort;
 import com.example.assignmentservice.application.ports.UserExistencePort;
@@ -8,11 +8,9 @@ import com.example.assignmentservice.domain.repository.UserProductAssignmentRepo
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
-@Service
 public class ExistenceValidator {
     private static final Logger logger = LoggerFactory.getLogger(ExistenceValidator.class);
 
@@ -39,7 +37,7 @@ public class ExistenceValidator {
         }
     }
 
-    protected void checkUserAndProductExist(UUID userId, UUID productId) {
+    public void checkUserAndProductExist(UUID userId, UUID productId) {
         checkUserExists(userId);
         checkProductExists(productId);
     }

@@ -2,6 +2,7 @@ package com.example.userservice.application.usecases;
 
 import com.example.userservice.application.dto.UserDto;
 import com.example.userservice.application.mapper.UserMapper;
+import com.example.userservice.application.validator.AdminRoleValidator;
 import com.example.userservice.domain.exception.NotFoundException;
 import com.example.userservice.domain.model.enums.UserRole;
 import com.example.userservice.domain.repository.UserRepository;
@@ -9,13 +10,11 @@ import com.example.userservice.adapters.presentation.dto.UserRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.UUID;
 
-@Service
 public class UpdateUserUseCase {
     private static final Logger log = LoggerFactory.getLogger(UpdateUserUseCase.class);
 

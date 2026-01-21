@@ -1,18 +1,19 @@
 package com.example.assignmentservice.application.usescases;
 
+import com.example.assignmentservice.application.validator.ExistenceValidator;
+import com.example.assignmentservice.application.validator.RightsValidator;
 import com.example.assignmentservice.domain.model.entity.UserProductAssignment;
 import com.example.assignmentservice.domain.model.enums.AssignmentRole;
+import com.example.assignmentservice.domain.ports.CreateAssignmentUseCasePort;
 import com.example.assignmentservice.domain.repository.UserProductAssignmentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
-@Service
-public class CreateAssignmentUseCase {
+public class CreateAssignmentUseCase implements CreateAssignmentUseCasePort {
     private static final Logger logger = LoggerFactory.getLogger(CreateAssignmentUseCase.class);
 
     private final UserProductAssignmentRepository repo;
@@ -26,6 +27,7 @@ public class CreateAssignmentUseCase {
         this.checkRights = checkRights;
     }
 
+    @Override
     public UserProductAssignment assign(UUID actorId, String actorRoleClaim, UUID userId, UUID productId, AssignmentRole role) {
         logger.info("Creating assignment: user={}, product={}, role={}, actor={} (actorRole={})",
                 userId, productId, role, actorId, actorRoleClaim);

@@ -3,15 +3,14 @@ package com.example.assignmentservice.application.usescases;
 import com.example.assignmentservice.application.dto.UserProductAssignmentDto;
 import com.example.assignmentservice.application.mapper.AssignmentMapper;
 import com.example.assignmentservice.domain.model.entity.UserProductAssignment;
+import com.example.assignmentservice.domain.ports.GetAssignmentsUseCasePort;
 import com.example.assignmentservice.domain.repository.UserProductAssignmentRepository;
-import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@Service
-public class GetAssignmentsUseCase {
+public class GetAssignmentsUseCase implements GetAssignmentsUseCasePort {
     private final UserProductAssignmentRepository repo;
     private final AssignmentMapper toDto;
 
@@ -21,6 +20,7 @@ public class GetAssignmentsUseCase {
         this.toDto = toDto;
     }
 
+    @Override
     public List<UserProductAssignmentDto> list(UUID userId, UUID productId) {
         List<UserProductAssignment> assignments;
 
