@@ -1,4 +1,4 @@
-package com.example.fileservice.domain.dto;
+package com.example.fileservice.domain.model;
 
 import java.time.Instant;
 import java.util.UUID;

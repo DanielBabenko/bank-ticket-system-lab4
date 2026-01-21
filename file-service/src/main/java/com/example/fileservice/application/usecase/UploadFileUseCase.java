@@ -1,12 +1,10 @@
-package com.example.fileservice.application.service;
+package com.example.fileservice.application.usecase;
 
 import com.example.fileservice.application.command.UploadFileCommand;
 import com.example.fileservice.domain.model.File;
 import com.example.fileservice.domain.port.outbound.FileRepositoryPort;
 import com.example.fileservice.domain.port.outbound.StoragePort;
 import com.example.fileservice.domain.port.inbound.UploadFileUseCasePort;
-
-import java.util.Objects;
 
 public class UploadFileUseCase implements UploadFileUseCasePort {
 

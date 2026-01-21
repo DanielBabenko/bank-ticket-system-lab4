@@ -1,6 +1,6 @@
 package com.example.fileservice.adapters.inbound.transaction;
 
-import com.example.fileservice.application.service.GetFileUseCase;
+import com.example.fileservice.application.usecase.GetFileUseCase;
 import com.example.fileservice.domain.model.File;
 import com.example.fileservice.domain.port.inbound.GetFileUseCasePort;
 import com.example.fileservice.domain.port.outbound.FileRepositoryPort;

@@ -1,4 +1,4 @@
-package com.example.fileservice.application.service;
+package com.example.fileservice.application.usecase;
 
 import com.example.fileservice.domain.model.File;
 import com.example.fileservice.domain.port.inbound.DownloadFileUseCasePort;
@@ -8,7 +8,6 @@ import com.example.fileservice.application.exception.ForbiddenException;
 import com.example.fileservice.application.exception.NotFoundException;
 
 import java.io.InputStream;
-import java.util.Objects;
 import java.util.UUID;
 
 public class DownloadFileUseCase implements DownloadFileUseCasePort {
@@ -22,16 +21,10 @@ public class DownloadFileUseCase implements DownloadFileUseCasePort {
     }
 
     @Override
-    public DownloadResult downloadFile(UUID fileId, UUID userId, Object jwt) {
+    public DownloadResult downloadFile(UUID fileId, UUID userId, boolean isAdminOrManager) {
         if (fileId == null) throw new IllegalArgumentException("File id required");
         var opt = fileRepository.findById(fileId);
         File file = opt.orElseThrow(() -> new NotFoundException("File not found: " + fileId));
-
-        boolean isAdminOrManager = false;
-        if (jwt != null) {
-            // jwt is framework object (adapter). Here we accept Object; adapters pass Jwt and we inspect in decorator if needed.
-            // For pure application, we don't parse JWT; assume adapter validated roles and passed userId accordingly.
-        }
 
         if (!(file.getUploaderId().equals(userId) || isAdminOrManager)) {
             throw new ForbiddenException("You must be uploader, manager or admin to download this file");

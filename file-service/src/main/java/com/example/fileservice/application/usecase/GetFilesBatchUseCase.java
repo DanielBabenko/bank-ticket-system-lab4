@@ -1,4 +1,4 @@
-package com.example.fileservice.application.service;
+package com.example.fileservice.application.usecase;
 
 import com.example.fileservice.domain.port.inbound.GetFilesBatchUseCasePort;
 import com.example.fileservice.domain.port.outbound.FileRepositoryPort;

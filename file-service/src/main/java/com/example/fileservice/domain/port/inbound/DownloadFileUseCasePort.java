@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface DownloadFileUseCasePort {
-    DownloadResult downloadFile(UUID fileId, UUID userId, Object jwt);
+    DownloadResult downloadFile(UUID fileId, UUID userId, boolean isAdminOrManager);
 
     class DownloadResult {
         public final InputStream inputStream;

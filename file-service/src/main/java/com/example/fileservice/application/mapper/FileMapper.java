@@ -2,7 +2,7 @@ package com.example.fileservice.application.mapper;
 
 import com.example.fileservice.application.dto.ApplicationInfoDto;
 import com.example.fileservice.application.dto.FileDto;
-import com.example.fileservice.domain.dto.ApplicationInfo;
+import com.example.fileservice.domain.model.ApplicationInfo;
 import com.example.fileservice.domain.model.File;
 
 import java.util.Collections;

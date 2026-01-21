@@ -1,6 +1,6 @@
 package com.example.fileservice.adapters.inbound.transaction;
 
-import com.example.fileservice.application.service.GetFilesBatchUseCase;
+import com.example.fileservice.application.usecase.GetFilesBatchUseCase;
 import com.example.fileservice.domain.port.inbound.GetFilesBatchUseCasePort;
 import com.example.fileservice.domain.port.outbound.FileRepositoryPort;
 import org.springframework.stereotype.Service;

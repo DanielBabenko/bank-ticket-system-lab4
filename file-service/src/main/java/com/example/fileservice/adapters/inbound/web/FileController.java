@@ -107,7 +107,14 @@ public class FileController {
         if (userIdStr == null) throw new IllegalArgumentException("User ID not found in token");
         UUID userId = UUID.fromString(userIdStr);
 
-        var res = downloadUseCase.downloadFile(id, userId, jwt);
+        boolean isAdminOrManager = false;
+        if (jwt != null) {
+            Object roleClaim = jwt.getClaims().get("role");
+            if (roleClaim != null && (("ROLE_ADMIN".equals(roleClaim.toString())) || ("ROLE_MANAGER".equals(roleClaim.toString())))) {
+                isAdminOrManager = true;
+            }
+        }
+        var res = downloadUseCase.downloadFile(id, userId, isAdminOrManager);
 
         ContentDisposition contentDisposition = ContentDisposition.attachment()
                 .filename(res.filename)
@@ -140,8 +147,14 @@ public class FileController {
         String userIdStr = jwt.getClaimAsString("uid");
         if (userIdStr == null) throw new IllegalArgumentException("User ID not found in token");
         UUID userId = UUID.fromString(userIdStr);
-
-        deleteUseCase.deleteFile(id, userId, jwt);
+        boolean isAdmin = false;
+        if (jwt != null) {
+            Object roleClaim = jwt.getClaims().get("role");
+            if (roleClaim != null && (("ROLE_ADMIN".equals(roleClaim.toString())))) {
+                isAdmin = true;
+            }
+        }
+        deleteUseCase.deleteFile(id, userId, isAdmin);
         log.info("File deleted: {} by user {}", id, userId);
         return ResponseEntity.noContent().build();
     }
@@ -160,7 +173,10 @@ public class FileController {
         List<com.example.fileservice.domain.model.File> files = listUseCase.listAll(page, size);
 
         List<FileDto> dtos = files.stream()
-                .map(f -> FileMapper.toDto(f, List.of(), null))
+                .map(f -> {
+                    var apps = applicationServicePort.getApplicationsByFile(f.getId());
+                    return FileMapper.toDto(f, apps, null);
+                })
                 .collect(Collectors.toList());
 
         HttpHeaders headers = new HttpHeaders();
@@ -180,7 +196,7 @@ public class FileController {
 
         // Получаем applications через ApplicationServicePort (адаптер)
         var apps = applicationServicePort.getApplicationsByFile(file.getId());
-        String downloadUrl = null; // storage adapter можно инжектить и получить URL, но чтобы не дублировать — опустил
+        String downloadUrl = null;
 
         FileDto dto = FileMapper.toDto(file, apps, downloadUrl);
         return ResponseEntity.ok(dto);

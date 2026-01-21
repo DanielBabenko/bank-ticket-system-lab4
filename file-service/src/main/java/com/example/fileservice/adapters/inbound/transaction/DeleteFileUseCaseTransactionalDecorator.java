@@ -1,6 +1,6 @@
 package com.example.fileservice.adapters.inbound.transaction;
 
-import com.example.fileservice.application.service.DeleteFileUseCase;
+import com.example.fileservice.application.usecase.DeleteFileUseCase;
 import com.example.fileservice.domain.port.inbound.DeleteFileUseCasePort;
 import com.example.fileservice.domain.port.outbound.FileRepositoryPort;
 import com.example.fileservice.domain.port.outbound.StoragePort;
@@ -20,7 +20,7 @@ public class DeleteFileUseCaseTransactionalDecorator implements DeleteFileUseCas
     }
 
     @Override
-    public void deleteFile(UUID fileId, UUID userId, Object jwt) {
-        delegate.deleteFile(fileId, userId, jwt);
+    public void deleteFile(UUID fileId, UUID userId, boolean isAdmin) {
+        delegate.deleteFile(fileId, userId, isAdmin);
     }
 }

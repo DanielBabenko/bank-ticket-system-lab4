@@ -1,6 +1,6 @@
 package com.example.fileservice.adapters.inbound.transaction;
 
-import com.example.fileservice.application.service.DownloadFileUseCase;
+import com.example.fileservice.application.usecase.DownloadFileUseCase;
 import com.example.fileservice.domain.port.inbound.DownloadFileUseCasePort;
 import com.example.fileservice.domain.port.outbound.FileRepositoryPort;
 import com.example.fileservice.domain.port.outbound.StoragePort;
@@ -23,7 +23,7 @@ public class DownloadFileUseCaseTransactionalDecorator implements DownloadFileUs
     }
 
     @Override
-    public DownloadResult downloadFile(UUID fileId, UUID userId, Object jwt) {
-        return delegate.downloadFile(fileId, userId, jwt);
+    public DownloadResult downloadFile(UUID fileId, UUID userId, boolean isAdminOrManager) {
+        return delegate.downloadFile(fileId, userId, isAdminOrManager);
     }
 }

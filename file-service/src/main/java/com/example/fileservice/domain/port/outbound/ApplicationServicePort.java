@@ -1,6 +1,6 @@
 package com.example.fileservice.domain.port.outbound;
 
-import com.example.fileservice.domain.dto.ApplicationInfo;
+import com.example.fileservice.domain.model.ApplicationInfo;
 import java.util.List;
 import java.util.UUID;
 

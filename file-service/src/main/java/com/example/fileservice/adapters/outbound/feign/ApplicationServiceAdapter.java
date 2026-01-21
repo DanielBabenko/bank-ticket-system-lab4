@@ -1,7 +1,7 @@
 package com.example.fileservice.adapters.outbound.feign;
 
 import com.example.fileservice.application.dto.ApplicationInfoDto;
-import com.example.fileservice.domain.dto.ApplicationInfo;
+import com.example.fileservice.domain.model.ApplicationInfo;
 import com.example.fileservice.domain.port.outbound.ApplicationServicePort;
 import org.springframework.stereotype.Component;
 

@@ -1,4 +1,4 @@
-package com.example.fileservice.application.service;
+package com.example.fileservice.application.usecase;
 
 import com.example.fileservice.domain.model.File;
 import com.example.fileservice.domain.port.outbound.FileRepositoryPort;
@@ -20,15 +20,10 @@ public class DeleteFileUseCase implements DeleteFileUseCasePort {
     }
 
     @Override
-    public void deleteFile(UUID fileId, UUID userId, Object jwt) {
+    public void deleteFile(UUID fileId, UUID userId, boolean isAdmin) {
         if (fileId == null) throw new IllegalArgumentException("File id required");
         File file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new NotFoundException("File not found: " + fileId));
-
-        boolean isAdmin = false;
-        if (jwt != null) {
-            // same comment as in DownloadFileUseCase — adapter can do role extraction if needed
-        }
 
         if (!(file.getUploaderId().equals(userId) || isAdmin)) {
             throw new ForbiddenException("You must be uploader or admin to delete this file");
