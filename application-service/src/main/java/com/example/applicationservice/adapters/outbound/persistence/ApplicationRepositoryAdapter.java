@@ -141,7 +141,7 @@ public class ApplicationRepositoryAdapter implements ApplicationRepositoryPort {
             List<ApplicationHistory> hist = e.getHistory().stream().map(h -> {
                 ApplicationHistory dh = new ApplicationHistory();
                 dh.setId(h.getId());
-                dh.setApplicationId(d.getId());
+                dh.setApplicationId(e.getId());
                 dh.setOldStatus(h.getOldStatus());
                 dh.setNewStatus(h.getNewStatus());
                 dh.setChangedBy(h.getChangedBy());
