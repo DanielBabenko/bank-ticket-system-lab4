@@ -1,4 +1,4 @@
-package com.example.userservice.adapters.infrastructure.inbound;
+package com.example.userservice.adapters.infrastructure.inbound.transaction;
 
 import com.example.userservice.application.dto.UserDto;
 import com.example.userservice.application.dto.UserRequest;

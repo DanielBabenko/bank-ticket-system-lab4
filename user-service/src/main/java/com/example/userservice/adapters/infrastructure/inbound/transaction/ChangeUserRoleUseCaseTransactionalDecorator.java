@@ -1,4 +1,4 @@
-package com.example.userservice.adapters.infrastructure.inbound;
+package com.example.userservice.adapters.infrastructure.inbound.transaction;
 
 import com.example.userservice.application.usecases.ChangeUserRoleUseCase;
 import com.example.userservice.domain.ports.inbound.ChangeUserRoleUseCasePort;
