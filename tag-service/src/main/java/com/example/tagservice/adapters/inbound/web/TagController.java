@@ -9,6 +9,9 @@ import com.example.tagservice.domain.port.inbound.CreateTagUseCasePort;
 import com.example.tagservice.domain.port.inbound.GetTagUseCasePort;
 import com.example.tagservice.domain.port.inbound.ListTagsUseCasePort;
 import com.example.tagservice.domain.port.outbound.ApplicationServicePort;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +25,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Tags", description = "API for managing tags")
 @RestController
 @RequestMapping("/api/v1/tags")
 public class TagController {
@@ -47,12 +51,16 @@ public class TagController {
         this.applicationServicePort = applicationServicePort;
     }
 
+    @Operation(summary = "Create a new  unique tag", description = "Registers a new tag: name if it has not already existed")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Tag created or found successfully")
+    })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<TagDto> createTag(@Valid @RequestBody String name,
                                             UriComponentsBuilder uriBuilder) {
         String trimmed = (name == null) ? "" : name.trim();
-        Tag tag = createTagUseCase.createIfNotExists(trimmed);
+        com.example.tagservice.domain.model.Tag tag = createTagUseCase.createIfNotExists(trimmed);
 
         // не делаем внешний вызов application-service для простого create
         TagDto dto = TagMapper.toDtoWithoutApplications(tag);
@@ -65,6 +73,11 @@ public class TagController {
         return ResponseEntity.created(location).body(dto);
     }
 
+    @Operation(summary = "Read all tags", description = "Returns list of tags")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of applications"),
+            @ApiResponse(responseCode = "400", description = "Page size too large")
+    })
     @GetMapping
     public ResponseEntity<List<TagDto>> listTags(
             @RequestParam(defaultValue = "0") int page,
@@ -91,6 +104,11 @@ public class TagController {
                 .body(dtos);
     }
 
+    @Operation(summary = "Read certain tag by its name", description = "Returns data about a single tag: name and list of applications that uses this tag")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Data about a single tag"),
+            @ApiResponse(responseCode = "404", description = "Tag with this name is not found")
+    })
     @GetMapping("/{name}")
     public ResponseEntity<TagDto> getTagWithApplications(@PathVariable String name) {
         Tag tag = getTagUseCase.getTagByName(name);
