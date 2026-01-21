@@ -16,10 +16,12 @@ public class DeleteAssignmentUseCase implements DeleteAssignmentUseCasePort {
     private static final Logger logger = LoggerFactory.getLogger(DeleteAssignmentUseCase.class);
 
     private final UserProductAssignmentRepository repo;
-    private final ExistenceValidatorPort checkExistence;
-    private final RightsValidatorPort checkRights;
+    private final ExistenceValidator checkExistence;
+    private final RightsValidator checkRights;
 
-    public DeleteAssignmentUseCase(UserProductAssignmentRepository repo, ExistenceValidatorPort checkExistence, RightsValidatorPort checkRights) {
+    public DeleteAssignmentUseCase(UserProductAssignmentRepository repo,
+                                   ExistenceValidator checkExistence,
+                                   RightsValidator checkRights) {
         this.repo = repo;
         this.checkExistence = checkExistence;
         this.checkRights = checkRights;

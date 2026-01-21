@@ -1,6 +1,7 @@
 package com.example.assignmentservice.application.usescases;
 
 import com.example.assignmentservice.application.dto.UserProductAssignmentDto;
+import com.example.assignmentservice.application.mapper.AssignmentMapper;
 import com.example.assignmentservice.domain.model.entity.UserProductAssignment;
 import com.example.assignmentservice.domain.ports.AssignmentMapperPort;
 import com.example.assignmentservice.domain.ports.GetAssignmentsUseCasePort;
@@ -12,10 +13,10 @@ import java.util.stream.Collectors;
 
 public class GetAssignmentsUseCase implements GetAssignmentsUseCasePort {
     private final UserProductAssignmentRepository repo;
-    private final AssignmentMapperPort toDto;
+    private final AssignmentMapper toDto;
 
     public GetAssignmentsUseCase(
-            UserProductAssignmentRepository repo, AssignmentMapperPort toDto) {
+            UserProductAssignmentRepository repo, AssignmentMapper toDto) {
         this.repo = repo;
         this.toDto = toDto;
     }

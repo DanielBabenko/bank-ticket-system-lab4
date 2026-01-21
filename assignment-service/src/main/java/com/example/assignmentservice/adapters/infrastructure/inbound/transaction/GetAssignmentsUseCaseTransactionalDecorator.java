@@ -1,6 +1,7 @@
 package com.example.assignmentservice.adapters.infrastructure.inbound.transaction;
 
 import com.example.assignmentservice.application.dto.UserProductAssignmentDto;
+import com.example.assignmentservice.application.mapper.AssignmentMapper;
 import com.example.assignmentservice.application.usescases.GetAssignmentsUseCase;
 import com.example.assignmentservice.domain.ports.AssignmentMapperPort;
 import com.example.assignmentservice.domain.ports.GetAssignmentsUseCasePort;
@@ -16,8 +17,8 @@ import java.util.UUID;
 public class GetAssignmentsUseCaseTransactionalDecorator implements GetAssignmentsUseCasePort {
     private final GetAssignmentsUseCase delegate;
 
-    public GetAssignmentsUseCaseTransactionalDecorator(UserProductAssignmentRepository repo,
-                                                       AssignmentMapperPort mapper) {
+    public GetAssignmentsUseCaseTransactionalDecorator(UserProductAssignmentRepository repo) {
+        AssignmentMapper mapper = new AssignmentMapper();
         this.delegate = new GetAssignmentsUseCase(repo, mapper);
     }
 

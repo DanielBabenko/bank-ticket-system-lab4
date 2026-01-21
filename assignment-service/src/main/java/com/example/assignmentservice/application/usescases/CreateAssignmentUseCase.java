@@ -19,13 +19,13 @@ public class CreateAssignmentUseCase implements CreateAssignmentUseCasePort {
     private static final Logger logger = LoggerFactory.getLogger(CreateAssignmentUseCase.class);
 
     private final UserProductAssignmentRepository repo;
-    private final ExistenceValidatorPort checkExistence;
-    private final RightsValidatorPort checkRights;
+    private final ExistenceValidator checkExistence;
+    private final RightsValidator checkRights;
 
     public CreateAssignmentUseCase(
             UserProductAssignmentRepository repo,
-            ExistenceValidatorPort checkExistence,
-            RightsValidatorPort checkRights) {
+            ExistenceValidator checkExistence,
+            RightsValidator checkRights) {
         this.repo = repo;
         this.checkExistence = checkExistence;
         this.checkRights = checkRights;

@@ -17,12 +17,12 @@ public class DeleteUserUseCase implements DeleteUserUseCasePort {
 
     private final UserRepository userRepository;
     private final UserEventPublisherPort eventPublisher;
-    private final AdminRoleValidatorPort validator;
+    private final AdminRoleValidator validator;
 
     public DeleteUserUseCase(
             UserRepository userRepository,
             UserEventPublisherPort eventPublisher,
-            AdminRoleValidatorPort validator) {
+            AdminRoleValidator validator) {
         this.userRepository = userRepository;
         this.eventPublisher = eventPublisher;
         this.validator = validator;

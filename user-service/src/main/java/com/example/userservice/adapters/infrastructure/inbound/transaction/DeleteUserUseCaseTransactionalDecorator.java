@@ -19,8 +19,8 @@ public class DeleteUserUseCaseTransactionalDecorator implements DeleteUserUseCas
     private final DeleteUserUseCase delegate;
 
     public DeleteUserUseCaseTransactionalDecorator(UserRepository repo,
-                                                   UserEventPublisherPort publisherPort,
-                                                   AdminRoleValidatorPort validator) {
+                                                   UserEventPublisherPort publisherPort) {
+        AdminRoleValidator validator = new AdminRoleValidator(repo);
         this.delegate = new DeleteUserUseCase(repo, publisherPort, validator);
     }
 

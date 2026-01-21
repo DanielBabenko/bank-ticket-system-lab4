@@ -23,9 +23,9 @@ public class CreateUserUseCase implements CreateUserUseCasePort {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final UserMapperPort userMapper;
+    private final UserMapper userMapper;
 
-    public CreateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapperPort userMapper) {
+    public CreateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapper userMapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.userMapper = userMapper;

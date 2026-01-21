@@ -19,7 +19,8 @@ public class FindUsersUseCaseTransactionalDecorator implements FindUsersUseCaseP
 
     private final FindUsersUseCase delegate;
 
-    public FindUsersUseCaseTransactionalDecorator(UserRepository repo, UserMapperPort mapper) {
+    public FindUsersUseCaseTransactionalDecorator(UserRepository repo) {
+        UserMapper mapper = new UserMapper();
         this.delegate = new FindUsersUseCase(repo, mapper);
     }
 
