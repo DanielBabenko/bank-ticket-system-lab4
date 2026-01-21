@@ -4,9 +4,6 @@ import com.example.userservice.domain.model.entity.User;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Scanner;
 import java.util.UUID;
 
 public interface UserRepository {

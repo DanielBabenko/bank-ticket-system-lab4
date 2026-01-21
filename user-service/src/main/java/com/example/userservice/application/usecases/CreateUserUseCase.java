@@ -1,35 +1,37 @@
 package com.example.userservice.application.usecases;
 
 import com.example.userservice.application.dto.UserDto;
+import com.example.userservice.application.mapper.UserMapper;
 import com.example.userservice.domain.exception.BadRequestException;
 import com.example.userservice.domain.exception.ConflictException;
 import com.example.userservice.domain.model.entity.User;
 import com.example.userservice.domain.model.enums.UserRole;
+import com.example.userservice.domain.ports.inbound.CreateUserUseCasePort;
+import com.example.userservice.domain.ports.inbound.UserMapperPort;
 import com.example.userservice.domain.repository.UserRepository;
-import com.example.userservice.presentation.dto.UserRequest;
+import com.example.userservice.application.dto.UserRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.UUID;
 
-@Service
-public class CreateUserUseCase {
+public class CreateUserUseCase implements CreateUserUseCasePort {
     private static final Logger log = LoggerFactory.getLogger(CreateUserUseCase.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final ToUserDto toUserDto;
+    private final UserMapperPort userMapper;
 
-    public CreateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder, ToUserDto toUserDto) {
+    public CreateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapperPort userMapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.toUserDto = toUserDto;
+        this.userMapper = userMapper;
     }
 
+    @Override
     public Mono<UserDto> create(UserRequest req) {
         if (req == null) {
             throw new BadRequestException("Request is required");
@@ -64,7 +66,7 @@ public class CreateUserUseCase {
                     user.setCreatedAt(Instant.now());
 
                     return userRepository.save(user)
-                            .map(toUserDto::toDto)
+                            .map(userMapper::toDto)
                             .doOnSuccess(dto -> log.info("User created: {}", dto.getUsername()));
                 });
     }

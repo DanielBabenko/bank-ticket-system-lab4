@@ -1,39 +1,19 @@
 package com.example.userservice.domain.model.entity;
 
 import com.example.userservice.domain.model.enums.UserRole;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.Version;
-import org.springframework.data.relational.core.mapping.Column;
-import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.Instant;
 import java.util.UUID;
 
-@Table("app_user")
 public class User {
-
-    @Id
     private UUID id;
-
-    @Column("username")
     private String username;
-
-    @Column("email")
     private String email;
-
-    @Column("password_hash")
     private String passwordHash;
 
-    @Column("role")
     private UserRole role;
-
-    @Column("created_at")
     private Instant createdAt;
-
-    @Column("updated_at")
     private Instant updatedAt;
-
-    @Version
     private Long version;
 
     // Конструкторы

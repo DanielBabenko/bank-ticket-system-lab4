@@ -1,32 +1,34 @@
 package com.example.userservice.application.usecases;
 
+import com.example.userservice.application.validator.AdminRoleValidator;
 import com.example.userservice.domain.exception.NotFoundException;
 import com.example.userservice.domain.ports.UserEventPublisherPort;
+import com.example.userservice.domain.ports.inbound.AdminRoleValidatorPort;
+import com.example.userservice.domain.ports.inbound.DeleteUserUseCasePort;
 import com.example.userservice.domain.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.util.UUID;
 
-@Service
-public class DeleteUserUseCase {
+public class DeleteUserUseCase implements DeleteUserUseCasePort {
     private static final Logger log = LoggerFactory.getLogger(DeleteUserUseCase.class);
 
     private final UserRepository userRepository;
     private final UserEventPublisherPort eventPublisher;
-    private final AdminRoleValidator validator;
+    private final AdminRoleValidatorPort validator;
 
     public DeleteUserUseCase(
             UserRepository userRepository,
             UserEventPublisherPort eventPublisher,
-            AdminRoleValidator validator) {
+            AdminRoleValidatorPort validator) {
         this.userRepository = userRepository;
         this.eventPublisher = eventPublisher;
         this.validator = validator;
     }
 
+    @Override
     public Mono<Void> delete(UUID userId) {
         return validator.validateAdmin()
                 .then(userRepository.findById(userId))

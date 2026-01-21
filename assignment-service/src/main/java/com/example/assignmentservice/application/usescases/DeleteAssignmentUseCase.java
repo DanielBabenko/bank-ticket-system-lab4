@@ -1,28 +1,31 @@
 package com.example.assignmentservice.application.usescases;
 
+import com.example.assignmentservice.application.validator.ExistenceValidator;
+import com.example.assignmentservice.application.validator.RightsValidator;
 import com.example.assignmentservice.domain.exception.UnauthorizedException;
+import com.example.assignmentservice.domain.ports.DeleteAssignmentUseCasePort;
+import com.example.assignmentservice.domain.ports.ExistenceValidatorPort;
+import com.example.assignmentservice.domain.ports.RightsValidatorPort;
 import com.example.assignmentservice.domain.repository.UserProductAssignmentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
-@Service
-public class DeleteAssignmentUseCase {
+public class DeleteAssignmentUseCase implements DeleteAssignmentUseCasePort {
     private static final Logger logger = LoggerFactory.getLogger(DeleteAssignmentUseCase.class);
 
     private final UserProductAssignmentRepository repo;
-    private final ExistenceValidator checkExistence;
-    private final RightsValidator checkRights;
+    private final ExistenceValidatorPort checkExistence;
+    private final RightsValidatorPort checkRights;
 
-    public DeleteAssignmentUseCase(
-            UserProductAssignmentRepository repo, ExistenceValidator checkExistence, RightsValidator checkRights) {
+    public DeleteAssignmentUseCase(UserProductAssignmentRepository repo, ExistenceValidatorPort checkExistence, RightsValidatorPort checkRights) {
         this.repo = repo;
         this.checkExistence = checkExistence;
         this.checkRights = checkRights;
     }
 
+    @Override
     public void deleteAssignments(UUID actorId, String actorRoleClaim, UUID userId, UUID productId) {
         logger.info("Deleting assignments: actor={}, actorRole={}, user={}, product={}",
                 actorId, actorRoleClaim, userId, productId);
