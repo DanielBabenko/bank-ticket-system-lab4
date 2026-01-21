@@ -5,6 +5,9 @@ import com.example.userservice.domain.model.entity.User;
 import com.example.userservice.domain.ports.inbound.UserMapperPort;
 
 public class UserMapper implements UserMapperPort {
+    public UserMapper() {
+    }
+
     @Override
     public UserDto toDto(User user) {
         UserDto dto = new UserDto();
