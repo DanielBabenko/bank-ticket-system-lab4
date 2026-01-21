@@ -1,7 +1,7 @@
 package com.example.tagservice.adapters.outbound.feign;
 
 import com.example.tagservice.application.dto.ApplicationInfoDto;
-import com.example.tagservice.domain.dto.ApplicationInfo;
+import com.example.tagservice.domain.model.ApplicationInfo;
 import com.example.tagservice.domain.port.outbound.ApplicationServicePort;
 import org.springframework.stereotype.Component;
 

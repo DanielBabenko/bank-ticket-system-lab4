@@ -1,9 +1,8 @@
 package com.example.tagservice.controller;
 
 import com.example.tagservice.adapters.inbound.web.TagController;
-import com.example.tagservice.application.dto.ApplicationInfoDto;
 import com.example.tagservice.application.dto.TagDto;
-import com.example.tagservice.domain.dto.ApplicationInfo;
+import com.example.tagservice.domain.model.ApplicationInfo;
 import com.example.tagservice.domain.model.Tag;
 import com.example.tagservice.domain.port.inbound.CreateOrGetTagsBatchUseCasePort;
 import com.example.tagservice.domain.port.inbound.CreateTagUseCasePort;
