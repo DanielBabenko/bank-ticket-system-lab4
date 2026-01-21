@@ -4,7 +4,7 @@ import com.example.userservice.application.dto.UserDto;
 import com.example.userservice.domain.exception.NotFoundException;
 import com.example.userservice.domain.model.enums.UserRole;
 import com.example.userservice.domain.repository.UserRepository;
-import com.example.userservice.presentation.dto.UserRequest;
+import com.example.userservice.adapters.presentation.dto.UserRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
