@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 import java.util.UUID;
 
 public interface DeleteUserUseCasePort {
-    public Mono<Void> delete(UUID userId);
+    Mono<Void> delete(UUID userId);
 }

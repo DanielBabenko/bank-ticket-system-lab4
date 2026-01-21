@@ -5,7 +5,7 @@ import reactor.core.publisher.Mono;
 import java.util.UUID;
 
 public interface ChangeUserRoleUseCasePort {
-    public Mono<Void> promoteToManager(UUID userId);
+    Mono<Void> promoteToManager(UUID userId);
 
-    public Mono<Void> demoteToClient(UUID userId);
+    Mono<Void> demoteToClient(UUID userId);
 }

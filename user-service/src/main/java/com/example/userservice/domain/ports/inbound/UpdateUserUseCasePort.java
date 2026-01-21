@@ -7,5 +7,5 @@ import reactor.core.publisher.Mono;
 import java.util.UUID;
 
 public interface UpdateUserUseCasePort {
-    public Mono<UserDto> update(UUID userId, UserRequest req);
+    Mono<UserDto> update(UUID userId, UserRequest req);
 }
