@@ -1,6 +1,7 @@
 package com.example.userservice.application.usecases;
 
 import com.example.userservice.application.dto.UserDto;
+import com.example.userservice.application.dto.UserMapper;
 import com.example.userservice.domain.exception.BadRequestException;
 import com.example.userservice.domain.exception.ConflictException;
 import com.example.userservice.domain.model.entity.User;
@@ -22,12 +23,12 @@ public class CreateUserUseCase {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final ToUserDto toUserDto;
+    private final UserMapper userMapper;
 
-    public CreateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder, ToUserDto toUserDto) {
+    public CreateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapper userMapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.toUserDto = toUserDto;
+        this.userMapper = userMapper;
     }
 
     public Mono<UserDto> create(UserRequest req) {
@@ -64,7 +65,7 @@ public class CreateUserUseCase {
                     user.setCreatedAt(Instant.now());
 
                     return userRepository.save(user)
-                            .map(toUserDto::toDto)
+                            .map(userMapper::toDto)
                             .doOnSuccess(dto -> log.info("User created: {}", dto.getUsername()));
                 });
     }

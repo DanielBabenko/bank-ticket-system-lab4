@@ -1,11 +1,10 @@
-package com.example.userservice.application.usecases;
+package com.example.userservice.application.dto;
 
-import com.example.userservice.application.dto.UserDto;
 import com.example.userservice.domain.model.entity.User;
 import org.springframework.stereotype.Service;
 
 @Service
-public class ToUserDto {
+public class UserMapper {
     public UserDto toDto(User user) {
         UserDto dto = new UserDto();
         dto.setId(user.getId());

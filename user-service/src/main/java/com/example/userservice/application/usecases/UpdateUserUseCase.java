@@ -1,6 +1,7 @@
 package com.example.userservice.application.usecases;
 
 import com.example.userservice.application.dto.UserDto;
+import com.example.userservice.application.dto.UserMapper;
 import com.example.userservice.domain.exception.NotFoundException;
 import com.example.userservice.domain.model.enums.UserRole;
 import com.example.userservice.domain.repository.UserRepository;
@@ -21,13 +22,13 @@ public class UpdateUserUseCase {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AdminRoleValidator validator;
-    private final ToUserDto toUserDto;
+    private final UserMapper userMapper;
 
-    public UpdateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder, AdminRoleValidator validator, ToUserDto toUserDto) {
+    public UpdateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder, AdminRoleValidator validator, UserMapper userMapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.validator = validator;
-        this.toUserDto = toUserDto;
+        this.userMapper = userMapper;
     }
 
     public Mono<UserDto> update(UUID userId, UserRequest req) {
@@ -46,7 +47,7 @@ public class UpdateUserUseCase {
                     }
                     user.setUpdatedAt(Instant.now());
 
-                    return userRepository.save(user).map(toUserDto::toDto).doOnSuccess(dto -> log.info("User updated: {}", dto.getId()));
+                    return userRepository.save(user).map(userMapper::toDto).doOnSuccess(dto -> log.info("User updated: {}", dto.getId()));
                 });
     }
 

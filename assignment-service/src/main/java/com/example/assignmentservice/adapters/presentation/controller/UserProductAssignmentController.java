@@ -1,6 +1,7 @@
 package com.example.assignmentservice.adapters.presentation.controller;
 
 import com.example.assignmentservice.application.dto.UserProductAssignmentDto;
+import com.example.assignmentservice.application.mapper.AssignmentMapper;
 import com.example.assignmentservice.application.usescases.*;
 import com.example.assignmentservice.adapters.presentation.dto.UserProductAssignmentRequest;
 import com.example.assignmentservice.domain.model.enums.AssignmentRole;
@@ -30,10 +31,10 @@ public class UserProductAssignmentController {
     private final GetAssignmentsUseCase getUseCase;
     private final DeleteAssignmentUseCase deleteUseCase;
     private final ExistenceValidator checkExistence;
-    private final ToAssignmentDto toDto;
+    private final AssignmentMapper toDto;
 
     public UserProductAssignmentController(CreateAssignmentUseCase createUseCase, GetAssignmentsUseCase getUseCase, DeleteAssignmentUseCase deleteUseCase,
-                                           ExistenceValidator checkExistence, ToAssignmentDto toDto) {
+                                           ExistenceValidator checkExistence, AssignmentMapper toDto) {
         this.createUseCase = createUseCase;
         this.getUseCase = getUseCase;
         this.deleteUseCase = deleteUseCase;

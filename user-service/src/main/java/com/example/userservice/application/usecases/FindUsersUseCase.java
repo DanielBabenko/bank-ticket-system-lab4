@@ -1,6 +1,7 @@
 package com.example.userservice.application.usecases;
 
 import com.example.userservice.application.dto.UserDto;
+import com.example.userservice.application.dto.UserMapper;
 import com.example.userservice.domain.exception.BadRequestException;
 import com.example.userservice.domain.exception.NotFoundException;
 import com.example.userservice.domain.repository.UserRepository;
@@ -17,11 +18,11 @@ public class FindUsersUseCase {
     private static final Logger log = LoggerFactory.getLogger(FindUsersUseCase.class);
 
     private final UserRepository userRepository;
-    private final ToUserDto toUserDto;
+    private final UserMapper userMapper;
 
-    public FindUsersUseCase(UserRepository userRepository, ToUserDto toUserDto) {
+    public FindUsersUseCase(UserRepository userRepository, UserMapper userMapper) {
         this.userRepository = userRepository;
-        this.toUserDto = toUserDto;
+        this.userMapper = userMapper;
     }
 
     public Flux<UserDto> findAll(int page, int size) {
@@ -32,12 +33,12 @@ public class FindUsersUseCase {
         return userRepository.findAll()
                 .skip((long) page * size)
                 .take(size)
-                .map(toUserDto::toDto);
+                .map(userMapper::toDto);
     }
 
     public Mono<UserDto> findById(UUID id) {
         return userRepository.findById(id)
                 .switchIfEmpty(Mono.error(new NotFoundException("User not found: " + id)))
-                .map(toUserDto::toDto);
+                .map(userMapper::toDto);
     }
 }
