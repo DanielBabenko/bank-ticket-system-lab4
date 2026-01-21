@@ -4,6 +4,7 @@ import com.example.assignmentservice.domain.exception.ForbiddenException;
 import com.example.assignmentservice.domain.exception.NotFoundException;
 import com.example.assignmentservice.domain.exception.ServiceUnavailableException;
 import com.example.assignmentservice.domain.model.enums.AssignmentRole;
+import com.example.assignmentservice.domain.ports.RightsValidatorPort;
 import com.example.assignmentservice.domain.repository.UserProductAssignmentRepository;
 import feign.FeignException;
 import org.slf4j.Logger;
@@ -11,7 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 
-public class RightsValidator {
+public class RightsValidator implements RightsValidatorPort {
     private static final Logger logger = LoggerFactory.getLogger(RightsValidator.class);
 
     private final UserProductAssignmentRepository repo;
@@ -21,6 +22,7 @@ public class RightsValidator {
         this.repo = repo;
     }
 
+    @Override
     public void checkActorRights(UUID actorId, String actorRoleClaim, UUID productId) {
         try {
             boolean isAdmin = false;
@@ -42,6 +44,7 @@ public class RightsValidator {
         }
     }
 
+    @Override
     public void checkAdminRights(UUID actorId, String actorRoleClaim) {
         try {
             boolean isAdmin = false;
