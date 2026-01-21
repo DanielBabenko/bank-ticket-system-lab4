@@ -1,8 +1,11 @@
 package com.example.userservice.adapters.infrastructure.inbound.transaction;
 
 import com.example.userservice.application.dto.UserDto;
+import com.example.userservice.application.mapper.UserMapper;
 import com.example.userservice.application.usecases.FindUsersUseCase;
 import com.example.userservice.domain.ports.inbound.FindUsersUseCasePort;
+import com.example.userservice.domain.ports.inbound.UserMapperPort;
+import com.example.userservice.domain.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
@@ -16,8 +19,8 @@ public class FindUsersUseCaseTransactionalDecorator implements FindUsersUseCaseP
 
     private final FindUsersUseCase delegate;
 
-    public FindUsersUseCaseTransactionalDecorator(FindUsersUseCase delegate) {
-        this.delegate = delegate;
+    public FindUsersUseCaseTransactionalDecorator(UserRepository repo, UserMapperPort mapper) {
+        this.delegate = new FindUsersUseCase(repo, mapper);
     }
 
     @Override

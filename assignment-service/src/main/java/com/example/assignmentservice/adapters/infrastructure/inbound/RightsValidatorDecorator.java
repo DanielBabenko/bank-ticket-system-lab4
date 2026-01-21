@@ -2,6 +2,7 @@ package com.example.assignmentservice.adapters.infrastructure.inbound;
 
 import com.example.assignmentservice.application.validator.RightsValidator;
 import com.example.assignmentservice.domain.ports.RightsValidatorPort;
+import com.example.assignmentservice.domain.repository.UserProductAssignmentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,8 +13,8 @@ import java.util.UUID;
 public class RightsValidatorDecorator implements RightsValidatorPort {
     private final RightsValidator delegate;
 
-    public RightsValidatorDecorator(RightsValidator delegate) {
-        this.delegate = delegate;
+    public RightsValidatorDecorator(UserProductAssignmentRepository repo) {
+        this.delegate = new RightsValidator(repo);
     }
 
     @Override

@@ -5,6 +5,8 @@ import com.example.assignmentservice.application.validator.RightsValidator;
 import com.example.assignmentservice.domain.model.entity.UserProductAssignment;
 import com.example.assignmentservice.domain.model.enums.AssignmentRole;
 import com.example.assignmentservice.domain.ports.CreateAssignmentUseCasePort;
+import com.example.assignmentservice.domain.ports.ExistenceValidatorPort;
+import com.example.assignmentservice.domain.ports.RightsValidatorPort;
 import com.example.assignmentservice.domain.repository.UserProductAssignmentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,11 +19,13 @@ public class CreateAssignmentUseCase implements CreateAssignmentUseCasePort {
     private static final Logger logger = LoggerFactory.getLogger(CreateAssignmentUseCase.class);
 
     private final UserProductAssignmentRepository repo;
-    private final ExistenceValidator checkExistence;
-    private final RightsValidator checkRights;
+    private final ExistenceValidatorPort checkExistence;
+    private final RightsValidatorPort checkRights;
 
     public CreateAssignmentUseCase(
-            UserProductAssignmentRepository repo, ExistenceValidator checkExistence, RightsValidator checkRights) {
+            UserProductAssignmentRepository repo,
+            ExistenceValidatorPort checkExistence,
+            RightsValidatorPort checkRights) {
         this.repo = repo;
         this.checkExistence = checkExistence;
         this.checkRights = checkRights;

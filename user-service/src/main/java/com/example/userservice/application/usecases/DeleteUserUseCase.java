@@ -3,6 +3,7 @@ package com.example.userservice.application.usecases;
 import com.example.userservice.application.validator.AdminRoleValidator;
 import com.example.userservice.domain.exception.NotFoundException;
 import com.example.userservice.domain.ports.UserEventPublisherPort;
+import com.example.userservice.domain.ports.inbound.AdminRoleValidatorPort;
 import com.example.userservice.domain.ports.inbound.DeleteUserUseCasePort;
 import com.example.userservice.domain.repository.UserRepository;
 import org.slf4j.Logger;
@@ -16,12 +17,12 @@ public class DeleteUserUseCase implements DeleteUserUseCasePort {
 
     private final UserRepository userRepository;
     private final UserEventPublisherPort eventPublisher;
-    private final AdminRoleValidator validator;
+    private final AdminRoleValidatorPort validator;
 
     public DeleteUserUseCase(
             UserRepository userRepository,
             UserEventPublisherPort eventPublisher,
-            AdminRoleValidator validator) {
+            AdminRoleValidatorPort validator) {
         this.userRepository = userRepository;
         this.eventPublisher = eventPublisher;
         this.validator = validator;

@@ -5,6 +5,7 @@ import com.example.userservice.domain.exception.NotFoundException;
 import com.example.userservice.domain.exception.UnauthorizedException;
 import com.example.userservice.domain.model.entity.User;
 import com.example.userservice.domain.model.enums.UserRole;
+import com.example.userservice.domain.ports.inbound.AdminRoleValidatorPort;
 import com.example.userservice.domain.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +14,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.UUID;
 
-public class AdminRoleValidator {
+public class AdminRoleValidator implements AdminRoleValidatorPort {
     private static final Logger log = LoggerFactory.getLogger(AdminRoleValidator.class);
 
     private final UserRepository userRepository;
@@ -22,6 +23,7 @@ public class AdminRoleValidator {
         this.userRepository = userRepository;
     }
 
+    @Override
     public Mono<User> validateAdmin() {
         return ReactiveSecurityContextHolder.getContext()
                 .switchIfEmpty(Mono.error(new UnauthorizedException("Unauthorized")))

@@ -4,6 +4,8 @@ import com.example.assignmentservice.application.validator.ExistenceValidator;
 import com.example.assignmentservice.application.validator.RightsValidator;
 import com.example.assignmentservice.domain.exception.UnauthorizedException;
 import com.example.assignmentservice.domain.ports.DeleteAssignmentUseCasePort;
+import com.example.assignmentservice.domain.ports.ExistenceValidatorPort;
+import com.example.assignmentservice.domain.ports.RightsValidatorPort;
 import com.example.assignmentservice.domain.repository.UserProductAssignmentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,11 +16,10 @@ public class DeleteAssignmentUseCase implements DeleteAssignmentUseCasePort {
     private static final Logger logger = LoggerFactory.getLogger(DeleteAssignmentUseCase.class);
 
     private final UserProductAssignmentRepository repo;
-    private final ExistenceValidator checkExistence;
-    private final RightsValidator checkRights;
+    private final ExistenceValidatorPort checkExistence;
+    private final RightsValidatorPort checkRights;
 
-    public DeleteAssignmentUseCase(
-            UserProductAssignmentRepository repo, ExistenceValidator checkExistence, RightsValidator checkRights) {
+    public DeleteAssignmentUseCase(UserProductAssignmentRepository repo, ExistenceValidatorPort checkExistence, RightsValidatorPort checkRights) {
         this.repo = repo;
         this.checkExistence = checkExistence;
         this.checkRights = checkRights;

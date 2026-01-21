@@ -4,6 +4,9 @@ import com.example.assignmentservice.application.usescases.CreateAssignmentUseCa
 import com.example.assignmentservice.domain.model.entity.UserProductAssignment;
 import com.example.assignmentservice.domain.model.enums.AssignmentRole;
 import com.example.assignmentservice.domain.ports.CreateAssignmentUseCasePort;
+import com.example.assignmentservice.domain.ports.ExistenceValidatorPort;
+import com.example.assignmentservice.domain.ports.RightsValidatorPort;
+import com.example.assignmentservice.domain.repository.UserProductAssignmentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,8 +17,10 @@ import java.util.UUID;
 public class CreateAssignmentUseCaseTransactionalDecorator implements CreateAssignmentUseCasePort {
     private final CreateAssignmentUseCase delegate;
 
-    public CreateAssignmentUseCaseTransactionalDecorator(CreateAssignmentUseCase delegate) {
-        this.delegate = delegate;
+    public CreateAssignmentUseCaseTransactionalDecorator(UserProductAssignmentRepository repo,
+                                                         ExistenceValidatorPort existenceValidator,
+                                                         RightsValidatorPort rightsValidator) {
+        this.delegate = new CreateAssignmentUseCase(repo, existenceValidator, rightsValidator);
     }
 
     @Override

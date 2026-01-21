@@ -2,10 +2,10 @@ package com.example.userservice.application.mapper;
 
 import com.example.userservice.application.dto.UserDto;
 import com.example.userservice.domain.model.entity.User;
-import org.springframework.stereotype.Service;
+import com.example.userservice.domain.ports.inbound.UserMapperPort;
 
-@Service
-public class UserMapper {
+public class UserMapper implements UserMapperPort {
+    @Override
     public UserDto toDto(User user) {
         UserDto dto = new UserDto();
         dto.setId(user.getId());

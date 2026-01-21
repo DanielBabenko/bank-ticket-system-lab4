@@ -2,10 +2,10 @@ package com.example.assignmentservice.application.mapper;
 
 import com.example.assignmentservice.application.dto.UserProductAssignmentDto;
 import com.example.assignmentservice.domain.model.entity.UserProductAssignment;
-import org.springframework.stereotype.Service;
+import com.example.assignmentservice.domain.ports.AssignmentMapperPort;
 
-@Service
-public class AssignmentMapper {
+public class AssignmentMapper implements AssignmentMapperPort {
+    @Override
     public UserProductAssignmentDto toDto(UserProductAssignment assignment) {
         UserProductAssignmentDto dto = new UserProductAssignmentDto();
         dto.setId(assignment.getId());

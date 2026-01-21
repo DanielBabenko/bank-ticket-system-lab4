@@ -5,6 +5,7 @@ import com.example.userservice.application.mapper.UserMapper;
 import com.example.userservice.domain.exception.BadRequestException;
 import com.example.userservice.domain.exception.NotFoundException;
 import com.example.userservice.domain.ports.inbound.FindUsersUseCasePort;
+import com.example.userservice.domain.ports.inbound.UserMapperPort;
 import com.example.userservice.domain.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,9 +18,9 @@ public class FindUsersUseCase implements FindUsersUseCasePort {
     private static final Logger log = LoggerFactory.getLogger(FindUsersUseCase.class);
 
     private final UserRepository userRepository;
-    private final UserMapper userMapper;
+    private final UserMapperPort userMapper;
 
-    public FindUsersUseCase(UserRepository userRepository, UserMapper userMapper) {
+    public FindUsersUseCase(UserRepository userRepository, UserMapperPort userMapper) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
     }

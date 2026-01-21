@@ -7,6 +7,7 @@ import com.example.userservice.domain.exception.ConflictException;
 import com.example.userservice.domain.model.entity.User;
 import com.example.userservice.domain.model.enums.UserRole;
 import com.example.userservice.domain.ports.inbound.CreateUserUseCasePort;
+import com.example.userservice.domain.ports.inbound.UserMapperPort;
 import com.example.userservice.domain.repository.UserRepository;
 import com.example.userservice.application.dto.UserRequest;
 import org.slf4j.Logger;
@@ -22,9 +23,9 @@ public class CreateUserUseCase implements CreateUserUseCasePort {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final UserMapper userMapper;
+    private final UserMapperPort userMapper;
 
-    public CreateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapper userMapper) {
+    public CreateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapperPort userMapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.userMapper = userMapper;

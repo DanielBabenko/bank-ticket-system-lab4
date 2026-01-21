@@ -1,8 +1,11 @@
 package com.example.assignmentservice.adapters.infrastructure.inbound;
 
+import com.example.assignmentservice.application.ports.ProductExistencePort;
+import com.example.assignmentservice.application.ports.UserExistencePort;
 import com.example.assignmentservice.application.validator.ExistenceValidator;
 import com.example.assignmentservice.domain.model.enums.AssignmentRole;
 import com.example.assignmentservice.domain.ports.ExistenceValidatorPort;
+import com.example.assignmentservice.domain.repository.UserProductAssignmentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,8 +16,10 @@ import java.util.UUID;
 public class ExistenceValidatorDecorator implements ExistenceValidatorPort {
     private final ExistenceValidator delegate;
 
-    public ExistenceValidatorDecorator(ExistenceValidator delegate) {
-        this.delegate = delegate;
+    public ExistenceValidatorDecorator(UserProductAssignmentRepository repo,
+                                       UserExistencePort userExistencePort,
+                                       ProductExistencePort productExistencePort) {
+        this.delegate = new ExistenceValidator(repo, userExistencePort, productExistencePort);
     }
 
     @Override

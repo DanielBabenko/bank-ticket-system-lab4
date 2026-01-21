@@ -6,6 +6,7 @@ import com.example.userservice.application.mapper.UserMapper;
 import com.example.userservice.application.validator.AdminRoleValidator;
 import com.example.userservice.domain.exception.NotFoundException;
 import com.example.userservice.domain.model.enums.UserRole;
+import com.example.userservice.domain.ports.inbound.AdminRoleValidatorPort;
 import com.example.userservice.domain.ports.inbound.ChangeUserRoleUseCasePort;
 import com.example.userservice.domain.repository.UserRepository;
 import org.slf4j.Logger;
@@ -20,9 +21,9 @@ public class ChangeUserRoleUseCase implements ChangeUserRoleUseCasePort {
     private static final Logger log = LoggerFactory.getLogger(ChangeUserRoleUseCase.class);
 
     private final UserRepository userRepository;
-    private final AdminRoleValidator validator;
+    private final AdminRoleValidatorPort validator;
 
-    public ChangeUserRoleUseCase(UserRepository userRepository, AdminRoleValidator validator) {
+    public ChangeUserRoleUseCase(UserRepository userRepository, AdminRoleValidatorPort validator) {
         this.userRepository = userRepository;
         this.validator = validator;
     }

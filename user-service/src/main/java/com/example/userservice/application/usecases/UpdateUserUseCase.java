@@ -5,7 +5,9 @@ import com.example.userservice.application.mapper.UserMapper;
 import com.example.userservice.application.validator.AdminRoleValidator;
 import com.example.userservice.domain.exception.NotFoundException;
 import com.example.userservice.domain.model.enums.UserRole;
+import com.example.userservice.domain.ports.inbound.AdminRoleValidatorPort;
 import com.example.userservice.domain.ports.inbound.UpdateUserUseCasePort;
+import com.example.userservice.domain.ports.inbound.UserMapperPort;
 import com.example.userservice.domain.repository.UserRepository;
 import com.example.userservice.application.dto.UserRequest;
 import org.slf4j.Logger;
@@ -21,10 +23,11 @@ public class UpdateUserUseCase implements UpdateUserUseCasePort {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AdminRoleValidator validator;
-    private final UserMapper userMapper;
+    private final AdminRoleValidatorPort validator;
+    private final UserMapperPort userMapper;
 
-    public UpdateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder, AdminRoleValidator validator, UserMapper userMapper) {
+    public UpdateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                             AdminRoleValidatorPort validator, UserMapperPort userMapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.validator = validator;
