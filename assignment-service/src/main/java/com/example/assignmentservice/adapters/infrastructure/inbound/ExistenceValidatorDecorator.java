@@ -3,9 +3,13 @@ package com.example.assignmentservice.adapters.infrastructure.inbound;
 import com.example.assignmentservice.application.validator.ExistenceValidator;
 import com.example.assignmentservice.domain.model.enums.AssignmentRole;
 import com.example.assignmentservice.domain.ports.ExistenceValidatorPort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Service
+@Transactional
 public class ExistenceValidatorDecorator implements ExistenceValidatorPort {
     private final ExistenceValidator delegate;
 

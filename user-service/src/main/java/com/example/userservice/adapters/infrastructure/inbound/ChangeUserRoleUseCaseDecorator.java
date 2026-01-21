@@ -2,10 +2,14 @@ package com.example.userservice.adapters.infrastructure.inbound;
 
 import com.example.userservice.application.usecases.ChangeUserRoleUseCase;
 import com.example.userservice.domain.ports.inbound.ChangeUserRoleUseCasePort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
 import java.util.UUID;
 
+@Service
+@Transactional
 public class ChangeUserRoleUseCaseDecorator implements ChangeUserRoleUseCasePort {
     private final ChangeUserRoleUseCase delegate;
 

@@ -2,9 +2,13 @@ package com.example.assignmentservice.adapters.infrastructure.inbound;
 
 import com.example.assignmentservice.application.validator.RightsValidator;
 import com.example.assignmentservice.domain.ports.RightsValidatorPort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Service
+@Transactional
 public class RightsValidatorDecorator implements RightsValidatorPort {
     private final RightsValidator delegate;
 

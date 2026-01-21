@@ -3,11 +3,15 @@ package com.example.userservice.adapters.infrastructure.inbound;
 import com.example.userservice.application.dto.UserDto;
 import com.example.userservice.application.usecases.FindUsersUseCase;
 import com.example.userservice.domain.ports.inbound.FindUsersUseCasePort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.UUID;
 
+@Service
+@Transactional
 public class FindUsersUseCaseDecorator implements FindUsersUseCasePort {
 
     private final FindUsersUseCase delegate;
