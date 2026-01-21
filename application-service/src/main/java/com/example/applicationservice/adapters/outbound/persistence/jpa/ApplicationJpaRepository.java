@@ -18,23 +18,23 @@ import java.util.UUID;
 @Repository
 public interface ApplicationJpaRepository extends JpaRepository<ApplicationEntity, UUID> {
 
-    @Query("SELECT a.id FROM Application a WHERE a.applicantId = :applicantId")
+    @Query("SELECT a.id FROM ApplicationEntity a WHERE a.applicantId = :applicantId")
     List<UUID> findIdsByApplicantId(@Param("applicantId") UUID applicantId);
 
-    @Query("SELECT a.id FROM Application a WHERE a.productId = :productId")
+    @Query("SELECT a.id FROM ApplicationEntity a WHERE a.productId = :productId")
     List<UUID> findIdsByProductId(@Param("productId") UUID productId);
 
-    @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.tags WHERE a.id IN :ids")
+    @Query("SELECT DISTINCT a FROM ApplicationEntity a LEFT JOIN FETCH a.tags WHERE a.id IN :ids")
     List<ApplicationEntity> findByIdsWithTags(@Param("ids") List<UUID> ids);
 
-    @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.files WHERE a.id IN :ids")
+    @Query("SELECT DISTINCT a FROM ApplicationEntity a LEFT JOIN FETCH a.files WHERE a.id IN :ids")
     List<ApplicationEntity> findByIdsWithFiles(@Param("ids") List<UUID> ids);
 
     // Отдельные методы для конкретной заявки
-    @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.files WHERE a.id = :id")
+    @Query("SELECT DISTINCT a FROM ApplicationEntity a LEFT JOIN FETCH a.files WHERE a.id = :id")
     Optional<ApplicationEntity> findByIdWithFiles(@Param("id") UUID id);
 
-    @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.tags WHERE a.id = :id")
+    @Query("SELECT DISTINCT a FROM ApplicationEntity a LEFT JOIN FETCH a.tags WHERE a.id = :id")
     Optional<ApplicationEntity> findByIdWithTags(@Param("id") UUID id);
 
     @Modifying
@@ -48,11 +48,11 @@ public interface ApplicationJpaRepository extends JpaRepository<ApplicationEntit
     void deleteFilesByApplicationId(@Param("applicationId") UUID applicationId);
 
     // Методы для получения ID с пагинацией
-    @Query("SELECT a.id FROM Application a " +
+    @Query("SELECT a.id FROM ApplicationEntity a " +
             "ORDER BY a.createdAt DESC, a.id DESC")
     List<UUID> findIdsFirstPage(Pageable pageable);  // Используем Pageable вместо @Param
 
-    @Query("SELECT a.id FROM Application a " +
+    @Query("SELECT a.id FROM ApplicationEntity a " +
             "WHERE (a.createdAt < :timestamp OR (a.createdAt = :timestamp AND a.id < :id)) " +
             "ORDER BY a.createdAt DESC, a.id DESC")
     List<UUID> findIdsByKeyset(@Param("timestamp") Instant timestamp,
@@ -67,10 +67,10 @@ public interface ApplicationJpaRepository extends JpaRepository<ApplicationEntit
         return findIdsByKeyset(timestamp, id, PageRequest.of(0, limit));
     }
 
-    @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.tags t WHERE t = :tagName")
+    @Query("SELECT DISTINCT a FROM ApplicationEntity a LEFT JOIN FETCH a.tags t WHERE t = :tagName")
     List<ApplicationEntity> findByTag(@Param("tagName") String tagName);
 
-    @Query("SELECT DISTINCT a FROM Application a LEFT JOIN FETCH a.files f WHERE f = :fileId")
+    @Query("SELECT DISTINCT a FROM ApplicationEntity a LEFT JOIN FETCH a.files f WHERE f = :fileId")
     List<ApplicationEntity> findByFile(@Param("fileId") UUID fileId);
 
     long countByApplicantId(UUID applicantId);

@@ -44,7 +44,7 @@ public class ApplicationHistoryRepositoryAdapter implements ApplicationHistoryRe
         return jpa.findByApplicationIdOrderByChangedAtDesc(applicationId).stream().map(e -> {
             ApplicationHistory dh = new ApplicationHistory();
             dh.setId(e.getId());
-            dh.setApplicationId(e.getApplicationId());
+            dh.setApplicationId(e.getApplication().getApplicantId());
             dh.setOldStatus(e.getOldStatus());
             dh.setNewStatus(e.getNewStatus());
             dh.setChangedBy(e.getChangedBy());
