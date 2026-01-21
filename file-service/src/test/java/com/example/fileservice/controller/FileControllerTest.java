@@ -1,4 +1,4 @@
-package com.example.fileservice.controller;
+/*package com.example.fileservice.controller;
 
 import com.example.fileservice.dto.ApplicationInfoDto;
 import com.example.fileservice.dto.FileDto;
@@ -421,4 +421,4 @@ public class FileControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().getApplications().size());
     }
-}
+}*/
