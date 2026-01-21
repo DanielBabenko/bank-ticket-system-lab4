@@ -21,9 +21,9 @@ public class ChangeUserRoleUseCase implements ChangeUserRoleUseCasePort {
     private static final Logger log = LoggerFactory.getLogger(ChangeUserRoleUseCase.class);
 
     private final UserRepository userRepository;
-    private final AdminRoleValidatorPort validator;
+    private final AdminRoleValidator validator;
 
-    public ChangeUserRoleUseCase(UserRepository userRepository, AdminRoleValidatorPort validator) {
+    public ChangeUserRoleUseCase(UserRepository userRepository, AdminRoleValidator validator) {
         this.userRepository = userRepository;
         this.validator = validator;
     }

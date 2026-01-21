@@ -1,6 +1,10 @@
 package com.example.assignmentservice.adapters.infrastructure.inbound.transaction;
 
+import com.example.assignmentservice.application.ports.ProductExistencePort;
+import com.example.assignmentservice.application.ports.UserExistencePort;
 import com.example.assignmentservice.application.usescases.CreateAssignmentUseCase;
+import com.example.assignmentservice.application.validator.ExistenceValidator;
+import com.example.assignmentservice.application.validator.RightsValidator;
 import com.example.assignmentservice.domain.model.entity.UserProductAssignment;
 import com.example.assignmentservice.domain.model.enums.AssignmentRole;
 import com.example.assignmentservice.domain.ports.CreateAssignmentUseCasePort;
@@ -18,8 +22,10 @@ public class CreateAssignmentUseCaseTransactionalDecorator implements CreateAssi
     private final CreateAssignmentUseCase delegate;
 
     public CreateAssignmentUseCaseTransactionalDecorator(UserProductAssignmentRepository repo,
-                                                         ExistenceValidatorPort existenceValidator,
-                                                         RightsValidatorPort rightsValidator) {
+                                                         UserExistencePort userExistencePort,
+                                                         ProductExistencePort productExistencePort) {
+        ExistenceValidator existenceValidator = new ExistenceValidator(repo, userExistencePort, productExistencePort);
+        RightsValidator rightsValidator = new RightsValidator(repo);
         this.delegate = new CreateAssignmentUseCase(repo, existenceValidator, rightsValidator);
     }
 

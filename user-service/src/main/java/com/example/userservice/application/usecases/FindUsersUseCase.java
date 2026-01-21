@@ -18,9 +18,9 @@ public class FindUsersUseCase implements FindUsersUseCasePort {
     private static final Logger log = LoggerFactory.getLogger(FindUsersUseCase.class);
 
     private final UserRepository userRepository;
-    private final UserMapperPort userMapper;
+    private final UserMapper userMapper;
 
-    public FindUsersUseCase(UserRepository userRepository, UserMapperPort userMapper) {
+    public FindUsersUseCase(UserRepository userRepository, UserMapper userMapper) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
     }

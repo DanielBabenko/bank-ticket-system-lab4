@@ -5,6 +5,9 @@ import com.example.assignmentservice.domain.model.entity.UserProductAssignment;
 import com.example.assignmentservice.domain.ports.AssignmentMapperPort;
 
 public class AssignmentMapper implements AssignmentMapperPort {
+    public AssignmentMapper() {
+    }
+
     @Override
     public UserProductAssignmentDto toDto(UserProductAssignment assignment) {
         UserProductAssignmentDto dto = new UserProductAssignmentDto();

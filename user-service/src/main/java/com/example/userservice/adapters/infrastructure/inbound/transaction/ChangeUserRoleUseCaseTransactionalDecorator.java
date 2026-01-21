@@ -16,8 +16,8 @@ import java.util.UUID;
 public class ChangeUserRoleUseCaseTransactionalDecorator implements ChangeUserRoleUseCasePort {
     private final ChangeUserRoleUseCase delegate;
 
-    public ChangeUserRoleUseCaseTransactionalDecorator(UserRepository repo,
-                                                       AdminRoleValidatorPort validator) {
+    public ChangeUserRoleUseCaseTransactionalDecorator(UserRepository repo) {
+        AdminRoleValidator validator = new AdminRoleValidator(repo);
         this.delegate = new ChangeUserRoleUseCase(repo, validator);
     }
 

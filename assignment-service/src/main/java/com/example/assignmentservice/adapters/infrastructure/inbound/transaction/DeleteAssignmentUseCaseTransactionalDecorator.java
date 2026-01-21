@@ -1,6 +1,10 @@
 package com.example.assignmentservice.adapters.infrastructure.inbound.transaction;
 
+import com.example.assignmentservice.application.ports.ProductExistencePort;
+import com.example.assignmentservice.application.ports.UserExistencePort;
 import com.example.assignmentservice.application.usescases.DeleteAssignmentUseCase;
+import com.example.assignmentservice.application.validator.ExistenceValidator;
+import com.example.assignmentservice.application.validator.RightsValidator;
 import com.example.assignmentservice.domain.ports.DeleteAssignmentUseCasePort;
 import com.example.assignmentservice.domain.ports.ExistenceValidatorPort;
 import com.example.assignmentservice.domain.ports.RightsValidatorPort;
@@ -16,8 +20,10 @@ public class DeleteAssignmentUseCaseTransactionalDecorator implements DeleteAssi
     private final DeleteAssignmentUseCase delegate;
 
     public DeleteAssignmentUseCaseTransactionalDecorator(UserProductAssignmentRepository repo,
-                                                         ExistenceValidatorPort existenceValidator,
-                                                         RightsValidatorPort rightsValidator) {
+                                                         UserExistencePort userExistencePort,
+                                                         ProductExistencePort productExistencePort) {
+        ExistenceValidator existenceValidator = new ExistenceValidator(repo, userExistencePort, productExistencePort);
+        RightsValidator rightsValidator = new RightsValidator(repo);
         this.delegate = new DeleteAssignmentUseCase(repo, existenceValidator, rightsValidator);
     }
 

@@ -23,9 +23,9 @@ public class UpdateUserUseCaseTransactionalDecorator implements UpdateUserUseCas
     private final UpdateUserUseCase delegate;
 
     public UpdateUserUseCaseTransactionalDecorator(UserRepository repo,
-                                                   PasswordEncoder passwordEncoder,
-                                                   AdminRoleValidatorPort validator,
-                                                   UserMapperPort mapper) {
+                                                   PasswordEncoder passwordEncoder) {
+        AdminRoleValidator validator = new AdminRoleValidator(repo);
+        UserMapper mapper = new UserMapper();
         this.delegate = new UpdateUserUseCase(repo, passwordEncoder, validator, mapper);
     }
 

@@ -23,11 +23,11 @@ public class UpdateUserUseCase implements UpdateUserUseCasePort {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AdminRoleValidatorPort validator;
-    private final UserMapperPort userMapper;
+    private final AdminRoleValidator validator;
+    private final UserMapper userMapper;
 
     public UpdateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                             AdminRoleValidatorPort validator, UserMapperPort userMapper) {
+                             AdminRoleValidator validator, UserMapper userMapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.validator = validator;

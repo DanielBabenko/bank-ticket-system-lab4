@@ -19,8 +19,8 @@ public class CreateUserUseCaseTransactionalDecorator implements CreateUserUseCas
     private final CreateUserUseCase delegate;
 
     public CreateUserUseCaseTransactionalDecorator(UserRepository repo,
-                                                   PasswordEncoder passwordEncoder,
-                                                   UserMapperPort mapper) {
+                                                   PasswordEncoder passwordEncoder) {
+        UserMapper mapper = new UserMapper();
         this.delegate = new CreateUserUseCase(repo, passwordEncoder, mapper);
     }
 

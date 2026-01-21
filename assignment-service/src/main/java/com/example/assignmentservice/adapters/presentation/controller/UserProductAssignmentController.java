@@ -6,10 +6,7 @@ import com.example.assignmentservice.application.usescases.*;
 import com.example.assignmentservice.adapters.presentation.dto.UserProductAssignmentRequest;
 import com.example.assignmentservice.application.validator.ExistenceValidator;
 import com.example.assignmentservice.domain.model.enums.AssignmentRole;
-import com.example.assignmentservice.domain.ports.CreateAssignmentUseCasePort;
-import com.example.assignmentservice.domain.ports.DeleteAssignmentUseCasePort;
-import com.example.assignmentservice.domain.ports.ExistenceValidatorPort;
-import com.example.assignmentservice.domain.ports.GetAssignmentsUseCasePort;
+import com.example.assignmentservice.domain.ports.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,10 +33,10 @@ public class UserProductAssignmentController {
     private final GetAssignmentsUseCasePort getUseCasePort;
     private final DeleteAssignmentUseCasePort deleteUseCasePort;
     private final ExistenceValidatorPort checkExistencePort;
-    private final AssignmentMapper toDto;
+    private final AssignmentMapperPort toDto;
 
     public UserProductAssignmentController(CreateAssignmentUseCasePort createUseCasePort, GetAssignmentsUseCasePort getUseCasePort, DeleteAssignmentUseCasePort deleteUseCasePort, ExistenceValidatorPort checkExistencePort,
-                                           AssignmentMapper toDto) {
+                                           AssignmentMapperPort toDto) {
         this.createUseCasePort = createUseCasePort;
         this.getUseCasePort = getUseCasePort;
         this.deleteUseCasePort = deleteUseCasePort;
