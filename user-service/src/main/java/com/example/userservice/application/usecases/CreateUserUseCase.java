@@ -1,7 +1,7 @@
 package com.example.userservice.application.usecases;
 
 import com.example.userservice.application.dto.UserDto;
-import com.example.userservice.application.dto.UserMapper;
+import com.example.userservice.application.mapper.UserMapper;
 import com.example.userservice.domain.exception.BadRequestException;
 import com.example.userservice.domain.exception.ConflictException;
 import com.example.userservice.domain.model.entity.User;

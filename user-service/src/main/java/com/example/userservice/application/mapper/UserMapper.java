@@ -1,5 +1,6 @@
-package com.example.userservice.application.dto;
+package com.example.userservice.application.mapper;
 
+import com.example.userservice.application.dto.UserDto;
 import com.example.userservice.domain.model.entity.User;
 import org.springframework.stereotype.Service;
 
