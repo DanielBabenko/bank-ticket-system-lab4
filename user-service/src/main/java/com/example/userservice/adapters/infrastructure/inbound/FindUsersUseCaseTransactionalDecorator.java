@@ -12,11 +12,11 @@ import java.util.UUID;
 
 @Service
 @Transactional
-public class FindUsersUseCaseDecorator implements FindUsersUseCasePort {
+public class FindUsersUseCaseTransactionalDecorator implements FindUsersUseCasePort {
 
     private final FindUsersUseCase delegate;
 
-    public FindUsersUseCaseDecorator(FindUsersUseCase delegate) {
+    public FindUsersUseCaseTransactionalDecorator(FindUsersUseCase delegate) {
         this.delegate = delegate;
     }
 

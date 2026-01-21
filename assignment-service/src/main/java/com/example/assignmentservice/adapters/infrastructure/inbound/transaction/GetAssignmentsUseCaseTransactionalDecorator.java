@@ -1,4 +1,4 @@
-package com.example.assignmentservice.adapters.infrastructure.inbound;
+package com.example.assignmentservice.adapters.infrastructure.inbound.transaction;
 
 import com.example.assignmentservice.application.dto.UserProductAssignmentDto;
 import com.example.assignmentservice.application.usescases.GetAssignmentsUseCase;
@@ -11,10 +11,10 @@ import java.util.UUID;
 
 @Service
 @Transactional
-public class GetAssignmentsUseCaseDecorator implements GetAssignmentsUseCasePort {
+public class GetAssignmentsUseCaseTransactionalDecorator implements GetAssignmentsUseCasePort {
     private final GetAssignmentsUseCase delegate;
 
-    public GetAssignmentsUseCaseDecorator(GetAssignmentsUseCase delegate) {
+    public GetAssignmentsUseCaseTransactionalDecorator(GetAssignmentsUseCase delegate) {
         this.delegate = delegate;
     }
 

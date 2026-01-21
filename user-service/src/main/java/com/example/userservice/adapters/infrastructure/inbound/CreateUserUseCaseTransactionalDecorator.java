@@ -10,10 +10,10 @@ import reactor.core.publisher.Mono;
 
 @Service
 @Transactional
-public class CreateUserUseCaseDecorator implements CreateUserUseCasePort {
+public class CreateUserUseCaseTransactionalDecorator implements CreateUserUseCasePort {
     private final CreateUserUseCase delegate;
 
-    public CreateUserUseCaseDecorator(CreateUserUseCase delegate) {
+    public CreateUserUseCaseTransactionalDecorator(CreateUserUseCase delegate) {
         this.delegate = delegate;
     }
 

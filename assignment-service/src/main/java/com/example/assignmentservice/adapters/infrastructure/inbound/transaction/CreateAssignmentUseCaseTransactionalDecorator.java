@@ -1,4 +1,4 @@
-package com.example.assignmentservice.adapters.infrastructure.inbound;
+package com.example.assignmentservice.adapters.infrastructure.inbound.transaction;
 
 import com.example.assignmentservice.application.usescases.CreateAssignmentUseCase;
 import com.example.assignmentservice.domain.model.entity.UserProductAssignment;
@@ -7,15 +7,14 @@ import com.example.assignmentservice.domain.ports.CreateAssignmentUseCasePort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
 @Transactional
-public class CreateAssignmentUseCaseDecorator implements CreateAssignmentUseCasePort {
+public class CreateAssignmentUseCaseTransactionalDecorator implements CreateAssignmentUseCasePort {
     private final CreateAssignmentUseCase delegate;
 
-    public CreateAssignmentUseCaseDecorator(CreateAssignmentUseCase delegate) {
+    public CreateAssignmentUseCaseTransactionalDecorator(CreateAssignmentUseCase delegate) {
         this.delegate = delegate;
     }
 

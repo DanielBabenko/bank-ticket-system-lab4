@@ -1,4 +1,4 @@
-package com.example.assignmentservice.adapters.infrastructure.inbound;
+package com.example.assignmentservice.adapters.infrastructure.inbound.transaction;
 
 import com.example.assignmentservice.application.usescases.DeleteAssignmentUseCase;
 import com.example.assignmentservice.domain.ports.DeleteAssignmentUseCasePort;
@@ -9,10 +9,10 @@ import java.util.UUID;
 
 @Service
 @Transactional
-public class DeleteAssignmentUseCaseDecorator implements DeleteAssignmentUseCasePort {
+public class DeleteAssignmentUseCaseTransactionalDecorator implements DeleteAssignmentUseCasePort {
     private final DeleteAssignmentUseCase delegate;
 
-    public DeleteAssignmentUseCaseDecorator(DeleteAssignmentUseCase delegate) {
+    public DeleteAssignmentUseCaseTransactionalDecorator(DeleteAssignmentUseCase delegate) {
         this.delegate = delegate;
     }
 

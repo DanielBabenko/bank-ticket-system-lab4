@@ -12,10 +12,10 @@ import java.util.UUID;
 
 @Service
 @Transactional
-public class UpdateUserUseCaseDecorator implements UpdateUserUseCasePort {
+public class UpdateUserUseCaseTransactionalDecorator implements UpdateUserUseCasePort {
     private final UpdateUserUseCase delegate;
 
-    public UpdateUserUseCaseDecorator(UpdateUserUseCase delegate) {
+    public UpdateUserUseCaseTransactionalDecorator(UpdateUserUseCase delegate) {
         this.delegate = delegate;
     }
 

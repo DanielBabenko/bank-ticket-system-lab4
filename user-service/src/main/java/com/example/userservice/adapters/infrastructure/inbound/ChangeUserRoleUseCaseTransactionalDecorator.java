@@ -10,10 +10,10 @@ import java.util.UUID;
 
 @Service
 @Transactional
-public class ChangeUserRoleUseCaseDecorator implements ChangeUserRoleUseCasePort {
+public class ChangeUserRoleUseCaseTransactionalDecorator implements ChangeUserRoleUseCasePort {
     private final ChangeUserRoleUseCase delegate;
 
-    public ChangeUserRoleUseCaseDecorator(ChangeUserRoleUseCase delegate) {
+    public ChangeUserRoleUseCaseTransactionalDecorator(ChangeUserRoleUseCase delegate) {
         this.delegate = delegate;
     }
 

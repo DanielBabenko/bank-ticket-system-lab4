@@ -10,10 +10,10 @@ import java.util.UUID;
 
 @Service
 @Transactional
-public class DeleteUserUseCaseDecorator implements DeleteUserUseCasePort {
+public class DeleteUserUseCaseTransactionalDecorator implements DeleteUserUseCasePort {
     private final DeleteUserUseCase delegate;
 
-    public DeleteUserUseCaseDecorator(DeleteUserUseCase delegate) {
+    public DeleteUserUseCaseTransactionalDecorator(DeleteUserUseCase delegate) {
         this.delegate = delegate;
     }
 
