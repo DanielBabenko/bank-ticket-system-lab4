@@ -6,8 +6,9 @@ import com.example.userservice.domain.exception.BadRequestException;
 import com.example.userservice.domain.exception.ConflictException;
 import com.example.userservice.domain.model.entity.User;
 import com.example.userservice.domain.model.enums.UserRole;
+import com.example.userservice.domain.ports.inbound.CreateUserUseCasePort;
 import com.example.userservice.domain.repository.UserRepository;
-import com.example.userservice.adapters.presentation.dto.UserRequest;
+import com.example.userservice.application.dto.UserRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,7 +17,7 @@ import reactor.core.publisher.Mono;
 import java.time.Instant;
 import java.util.UUID;
 
-public class CreateUserUseCase {
+public class CreateUserUseCase implements CreateUserUseCasePort {
     private static final Logger log = LoggerFactory.getLogger(CreateUserUseCase.class);
 
     private final UserRepository userRepository;
@@ -29,6 +30,7 @@ public class CreateUserUseCase {
         this.userMapper = userMapper;
     }
 
+    @Override
     public Mono<UserDto> create(UserRequest req) {
         if (req == null) {
             throw new BadRequestException("Request is required");

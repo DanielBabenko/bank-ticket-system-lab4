@@ -1,4 +1,4 @@
-package com.example.userservice.adapters.presentation.dto;
+package com.example.userservice.application.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;

@@ -5,8 +5,9 @@ import com.example.userservice.application.mapper.UserMapper;
 import com.example.userservice.application.validator.AdminRoleValidator;
 import com.example.userservice.domain.exception.NotFoundException;
 import com.example.userservice.domain.model.enums.UserRole;
+import com.example.userservice.domain.ports.inbound.UpdateUserUseCasePort;
 import com.example.userservice.domain.repository.UserRepository;
-import com.example.userservice.adapters.presentation.dto.UserRequest;
+import com.example.userservice.application.dto.UserRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,7 +16,7 @@ import reactor.core.publisher.Mono;
 import java.time.Instant;
 import java.util.UUID;
 
-public class UpdateUserUseCase {
+public class UpdateUserUseCase implements UpdateUserUseCasePort {
     private static final Logger log = LoggerFactory.getLogger(UpdateUserUseCase.class);
 
     private final UserRepository userRepository;
@@ -30,6 +31,7 @@ public class UpdateUserUseCase {
         this.userMapper = userMapper;
     }
 
+    @Override
     public Mono<UserDto> update(UUID userId, UserRequest req) {
         return validator.validateAdmin()
                 .then(userRepository.findById(userId))
@@ -48,33 +50,5 @@ public class UpdateUserUseCase {
 
                     return userRepository.save(user).map(userMapper::toDto).doOnSuccess(dto -> log.info("User updated: {}", dto.getId()));
                 });
-    }
-
-    public Mono<Void> promoteToManager(UUID userId) {
-        return validator.validateAdmin()
-                .then(userRepository.findById(userId))
-                .switchIfEmpty(Mono.error(new NotFoundException("User not found: " + userId)))
-                .flatMap(user -> {
-                    if (user.getRole() != UserRole.ROLE_MANAGER) {
-                        user.setRole(UserRole.ROLE_MANAGER);
-                        user.setUpdatedAt(Instant.now());
-                        return userRepository.save(user).then();
-                    }
-                    return Mono.empty();
-                }).doOnSuccess(v -> log.info("User {} promoted to MANAGER", userId));
-    }
-
-    public Mono<Void> demoteToClient(UUID userId) {
-        return validator.validateAdmin()
-                .then(userRepository.findById(userId))
-                .switchIfEmpty(Mono.error(new NotFoundException("User not found: " + userId)))
-                .flatMap(user -> {
-                    if (user.getRole() != UserRole.ROLE_CLIENT) {
-                        user.setRole(UserRole.ROLE_CLIENT);
-                        user.setUpdatedAt(Instant.now());
-                        return userRepository.save(user).then();
-                    }
-                    return Mono.empty();
-                }).doOnSuccess(v -> log.info("User {} demoted to CLIENT", userId));
     }
 }
