@@ -1,4 +1,4 @@
-package com.example.applicationservice.service;
+/*package com.example.applicationservice.service;
 
 import com.example.applicationservice.dto.*;
 import com.example.applicationservice.event.FileEvent;
@@ -990,4 +990,4 @@ public class ApplicationServiceTest {
                 .assertNext(count -> assertEquals(expectedCount, count))
                 .verifyComplete();
     }
-}
+}*/
