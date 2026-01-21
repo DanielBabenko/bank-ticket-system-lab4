@@ -2,7 +2,7 @@ package com.example.tagservice.application.mapper;
 
 import com.example.tagservice.application.dto.ApplicationInfoDto;
 import com.example.tagservice.application.dto.TagDto;
-import com.example.tagservice.domain.dto.ApplicationInfo;
+import com.example.tagservice.domain.model.ApplicationInfo;
 import com.example.tagservice.domain.model.Tag;
 
 import java.util.Collections;

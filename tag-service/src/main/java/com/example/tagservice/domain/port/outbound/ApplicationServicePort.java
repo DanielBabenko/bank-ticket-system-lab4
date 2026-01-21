@@ -1,6 +1,6 @@
 package com.example.tagservice.domain.port.outbound;
 
-import com.example.tagservice.domain.dto.ApplicationInfo;
+import com.example.tagservice.domain.model.ApplicationInfo;
 
 import java.util.List;
 
